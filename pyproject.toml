@@ -20,3 +20,18 @@ test = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "unit: Unit tests (fast, no I/O)",
+    "integration: Integration tests (may use TestClient)",
+    "api: API acceptance tests (HTTP-level)",
+    "slow: Slow tests (bcrypt hashing, etc.)",
+]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
