@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from errors import ConflictError, NotFoundError
 from routes import router
 
 
@@ -26,6 +27,14 @@ def create_app() -> FastAPI:
             status_code=400,
             content={"detail": detail},
         )
+
+    @app.exception_handler(ValueError)
+    async def value_error_handler(request: Request, exc: ValueError):
+        if isinstance(exc, ConflictError):
+            return JSONResponse(status_code=409, content={"detail": str(exc)})
+        if isinstance(exc, NotFoundError):
+            return JSONResponse(status_code=401, content={"detail": str(exc)})
+        return JSONResponse(status_code=400, content={"detail": str(exc)})
 
     app.include_router(router)
     return app

@@ -22,5 +22,9 @@ class UserResponse(BaseModel):
     name: str
 
 
+class UpdateProfileRequest(BaseModel):
+    name: str | None = None
+
+
 class ErrorResponse(BaseModel):
     detail: str

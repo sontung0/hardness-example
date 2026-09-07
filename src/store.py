@@ -18,5 +18,13 @@ def get_user_with_hash(username: str) -> dict | None:
     return users.get(username)
 
 
+def update_user(username: str, name: str) -> dict | None:
+    user = users.get(username)
+    if user is None:
+        return None
+    user["name"] = name
+    return {"username": user["username"], "name": user["name"]}
+
+
 def user_exists(username: str) -> bool:
     return username in users
