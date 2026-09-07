@@ -75,20 +75,24 @@ inputDocuments:
    - Fresh `TestClient` fixture per test (in-memory store isolation)
    - User factory: `create_user(username, password, name)` helper
 
-**Example fixture pattern:**
+**Example fixture pattern (pytest + httpx via playwright-utils):**
+
+> Note: Config has `tea_use_playwright_utils: true`. For this backend-only API project with no browser interaction, we use pytest fixtures with httpx as the ASGI transport. This is the standard pattern for FastAPI TestClient-style testing.
 
 ```python
 import pytest
-from fastapi.testclient import TestClient
+from httpx import AsyncClient, ASGITransport
 from main import app
 
 @pytest.fixture
-def client():
-    return TestClient(app)
+async def client():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
 
 @pytest.fixture
-def registered_user(client):
-    response = client.post("/register", json={
+async def registered_user(client):
+    response = await client.post("/register", json={
         "username": "testuser",
         "password": "testpass123",
         "name": "Test User"
@@ -142,60 +146,84 @@ def registered_user(client):
 
 ## Test Coverage Matrix
 
-### Functional Requirement Scenarios
+> **P0/P1/P2/P3 = priority, NOT execution timing.** Execution strategy is defined separately in the Execution Strategy section. Priority reflects business criticality and risk, not when tests run.
 
-| ID | Scenario | Req | Level | Priority | Risk Link |
-|----|----------|-----|-------|----------|-----------|
-| T-01 | Register: valid input → 201 + JWT | FR-1 | Integration | **P0** | R-03 |
-| T-02 | Register: missing username → 400 | FR-1 | Integration | **P0** | — |
-| T-03 | Register: missing password → 400 | FR-1 | Integration | **P0** | — |
-| T-04 | Register: missing name → 400 | FR-1 | Integration | **P1** | — |
-| T-05 | Register: duplicate username → 409 | FR-1 | Integration | **P0** | R-03 |
-| T-06 | Register: username case normalization | FR-1 | Integration | **P1** | R-04 |
-| T-07 | Register: password hashed with bcrypt | FR-1 | Unit | **P0** | R-01 |
-| T-08 | Register: password_hash not in response | FR-1 | Integration | **P0** | R-01 |
-| T-09 | Login: valid credentials → 200 + JWT | FR-2 | Integration | **P0** | — |
-| T-10 | Login: wrong password → 401 | FR-2 | Integration | **P0** | R-02 |
-| T-11 | Login: nonexistent user → 401 | FR-2 | Integration | **P0** | R-02 |
-| T-12 | Login: missing username → 400 | FR-2 | Integration | **P1** | — |
-| T-13 | Login: missing password → 400 | FR-2 | Integration | **P1** | — |
-| T-14 | Get /me: valid JWT → 200 + profile | FR-3 | Integration | **P0** | — |
-| T-15 | Get /me: no token → 401 | FR-3 | Integration | **P0** | R-02 |
-| T-16 | Get /me: expired token → 401 | FR-3 | Integration | **P0** | R-02 |
-| T-17 | Get /me: malformed token → 401 | FR-3 | Integration | **P0** | R-02 |
-| T-18 | Get /me: tampered payload → 401 | FR-3 | Integration | **P0** | R-02 |
-| T-19 | Get /me: wrong secret → 401 | FR-3 | Unit | **P0** | R-02 |
+### P0 — Critical (Blocks release, security, data-integrity, no safe workaround)
 
-### NFR Scenarios
+*Criteria: Critical business impact + security/data-integrity + no safe workaround*
+*Purpose: Must pass before any release; highest risk coverage*
 
-| ID | Scenario | NFR | Level | Priority | Risk Link |
-|----|----------|-----|-------|----------|-----------|
-| T-20 | Password hash never in any response | NFR-6 | Integration | **P0** | R-01 |
-| T-21 | Error shape is always `{"detail": str}` | NFR-5 | Integration | **P1** | R-05 |
-| T-22 | 422 overridden to `{"detail": str}` | NFR-5 | Integration | **P1** | R-05 |
-| T-23 | Store returns only username + name | NFR-6 | Unit | **P1** | R-01 |
-| T-24 | JWT `sub` claim = lowercased username | NFR-3 | Unit | **P1** | — |
-| T-25 | JWT `exp` = 24h from issuance | NFR-3 | Unit | **P2** | — |
+| ID | Scenario | Req | Level | Risk Link |
+|----|----------|-----|-------|-----------|
+| T-01 | Register: valid input → 201 + JWT | FR-1 | Integration | R-03 |
+| T-02 | Register: missing username → 400 | FR-1 | Integration | — |
+| T-03 | Register: missing password → 400 | FR-1 | Integration | — |
+| T-05 | Register: duplicate username → 409 | FR-1 | Integration | R-03 |
+| T-07 | Register: password hashed with bcrypt | FR-1 | Unit | R-01 |
+| T-08 | Register: password_hash not in response | FR-1 | Integration | R-01 |
+| T-09 | Login: valid credentials → 200 + JWT | FR-2 | Integration | — |
+| T-10 | Login: wrong password → 401 | FR-2 | Integration | R-02 |
+| T-11 | Login: nonexistent user → 401 | FR-2 | Integration | R-02 |
+| T-14 | Get /me: valid JWT → 200 + profile | FR-3 | Integration | — |
+| T-15 | Get /me: no token → 401 | FR-3 | Integration | R-02 |
+| T-16 | Get /me: expired token → 401 | FR-3 | Integration | R-02 |
+| T-17 | Get /me: malformed token → 401 | FR-3 | Integration | R-02 |
+| T-18 | Get /me: tampered payload → 401 | FR-3 | Integration | R-02 |
+| T-19 | Get /me: wrong secret → 401 | FR-3 | Unit | R-02 |
+| T-20 | Password hash never in any response | NFR-6 | Integration | R-01 |
+| T-26 | Register → Login → Get /me full flow | R-03 | Integration | R-03 |
+| T-28 | Password never logged or in error messages | R-01 | Integration | R-01 |
 
-### Risk-Driven Scenarios
+### P1 — Core (Important features, integration, material user reach)
 
-| ID | Scenario | Risk | Level | Priority | Notes |
-|----|----------|------|-------|----------|-------|
-| T-26 | Register → Login → Get /me full flow | R-03 | Integration | **P0** | End-to-end auth lifecycle |
-| T-27 | Concurrent registrations same username | R-03 | Integration | **P1** | Race condition test |
-| T-28 | Password never logged or in error messages | R-01 | Integration | **P0** | Security boundary |
+*Criteria: Core behavior + material user reach + limited workaround*
+*Purpose: High-value coverage; failures degrade user experience*
+
+| ID | Scenario | Req | Level | Risk Link |
+|----|----------|-----|-------|-----------|
+| T-04 | Register: missing name → 400 | FR-1 | Integration | — |
+| T-06 | Register: username case normalization | FR-1 | Integration | R-04 |
+| T-12 | Login: missing username → 400 | FR-2 | Integration | — |
+| T-13 | Login: missing password → 400 | FR-2 | Integration | — |
+| T-21 | Error shape is always `{"detail": str}` | NFR-5 | Integration | R-05 |
+| T-22 | 422 overridden to `{"detail": str}` | NFR-5 | Integration | R-05 |
+| T-23 | Store returns only username + name | NFR-6 | Unit | R-01 |
+| T-24 | JWT `sub` claim = lowercased username | NFR-3 | Unit | — |
+| T-27 | Concurrent registrations same username | R-03 | Integration | R-03 |
+
+### P2 — Secondary (Edge cases, regression, acceptable workaround)
+
+*Criteria: Secondary behavior + narrower reach + acceptable workaround*
+*Purpose: Coverage for less common paths; lower urgency*
+
+| ID | Scenario | Req | Level | Risk Link |
+|----|----------|-----|-------|-----------|
+| T-25 | JWT `exp` = 24h from issuance | NFR-3 | Unit | — |
+
+### P3 — Rare (Cosmetic, experimental, minimal impact)
+
+*Criteria: Rare behavior + minimal impact + easy workaround*
+*Purpose: Lowest urgency; add when time permits*
+
+| ID | Scenario | Req | Level | Risk Link |
+|----|----------|-----|-------|-----------|
+| — | No P3 scenarios identified | — | — | — |
 
 ---
 
 ## Execution Strategy
 
-| Tier | Scope | Trigger | Estimated Duration |
-|------|-------|---------|-------------------|
-| **PR Gate** | All P0 + P1 scenarios (T-01 through T-25) | Every PR | ~2–4 minutes |
-| **Nightly** | Full suite (all 28 scenarios) + performance baseline | Nightly cron | ~5–8 minutes |
-| **Weekly** | Stress test: concurrent registrations, memory ceiling | Weekly cron | ~10–15 minutes |
+> **Philosophy:** Run everything in PRs if <15 min; defer only tests that are expensive or long-running.
 
-**Framework:** pytest + httpx (FastAPI TestClient backend)
+### By Tool Type
+
+| Tool | Scope | Trigger | Estimated Duration |
+|------|-------|---------|--------------------|
+| **pytest + httpx** | All 28 functional scenarios (P0 + P1 + P2) | Every PR | ~2–4 minutes |
+| **pytest + httpx** (extended) | Full suite + performance baseline | Nightly cron | ~5–8 minutes |
+| **pytest** (stress) | Concurrent registrations, memory ceiling | Weekly cron | ~10–15 minutes |
+
+**Framework:** pytest + httpx (ASGI transport for FastAPI)
 
 ---
 
@@ -212,12 +240,23 @@ def registered_user(client):
 
 ---
 
+## Tooling & Access Requirements
+
+| Tool | Purpose | Access/Setup | Status |
+|------|---------|-------------|--------|
+| Python ≥ 3.10 | Runtime | Local install | ✅ Ready |
+| FastAPI + Uvicorn | API server | pip install | ✅ Ready |
+| pytest | Test runner | pip install | ⏳ Pending |
+| httpx | ASGI transport for TestClient | pip install | ⏳ Pending |
+| bcrypt | Password hashing (test verification) | pip install | ✅ Ready |
+| PyJWT | JWT creation/verification (test verification) | pip install | ✅ Ready |
+
 ## Entry Criteria
 
 - [ ] PRD requirements agreed upon by QA, Dev, PM
 - [ ] Architecture document reviewed and approved
 - [ ] pytest + httpx installed and configured
-- [ ] Test fixtures created (fresh TestClient per test)
+- [ ] Test fixtures created (fresh AsyncClient per test)
 - [ ] Story 1.1 scaffolding complete (all 6 source files in `src/`)
 - [ ] UNKNOWN thresholds confirmed or defaults accepted (JWT expiry, bcrypt cost)
 
@@ -233,3 +272,65 @@ def registered_user(client):
 | Code coverage | **≥ 80%** — Branch coverage on `services.py`, `auth.py`, `store.py` |
 | NFR validation | **Evidence identified** — All 6 NFRs have planned validation scenarios |
 | Full NFR status | **Deferred** — PASS/CONCERNS/FAIL in `nfr-assess` after implementation |
+
+---
+
+## Appendix A: Code Examples & Tagging
+
+### Test Tagging Convention
+
+```python
+import pytest
+
+@pytest.mark.p0
+@pytest.mark.security
+async def test_register_password_not_in_response(client):
+    """T-08: password_hash must never appear in registration response."""
+    response = await client.post("/register", json={
+        "username": "taguser",
+        "password": "securepass123",
+        "name": "Tag User"
+    })
+    assert response.status_code == 201
+    body = response.json()
+    assert "password_hash" not in body
+    assert "password" not in body
+
+@pytest.mark.p0
+@pytest.mark.security
+async def test_me_no_token_returns_401(client):
+    """T-15: GET /me without token must return 401."""
+    response = await client.get("/me")
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"
+```
+
+### User Factory Helper
+
+```python
+import pytest
+
+@pytest.fixture
+def make_user(client):
+    """Factory fixture: register a user and return the response body."""
+    async def _make(username="testuser", password="testpass123", name="Test User"):
+        resp = await client.post("/register", json={
+            "username": username,
+            "password": password,
+            "name": name
+        })
+        return resp
+    return _make
+```
+
+---
+
+## Appendix B: Knowledge Base References
+
+| Knowledge Base Fragment | Usage in This Document |
+|------------------------|----------------------|
+| `risk-governance.md` | Risk classification categories (TECH/SEC/PERF/DATA/BUS/OPS) and governance framework |
+| `probability-impact.md` | P×I scoring matrix (1-3 scale) applied to all 8 risks |
+| `test-levels-framework.md` | Test level selection (Unit, Integration, E2E) applied to coverage matrix |
+| `test-priorities-matrix.md` | P0/P1/P2/P3 criteria and priority assignment logic |
+| `nfr-criteria.md` | NFR categories and threshold extraction for security, technical, and data NFRs |

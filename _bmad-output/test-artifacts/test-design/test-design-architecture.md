@@ -125,6 +125,57 @@ inputDocuments:
 - **BUS**: Business Impact (UX harm, logic errors, revenue)
 - **OPS**: Operations (deployment, config, monitoring)
 
+### Risk Mitigation Plans (High-Priority Risks)
+
+#### R-01: Password Hash Leak (Score 6)
+
+| Field | Detail |
+|-------|--------|
+| **Strategy** | 1. Assert response body for POST /register, POST /login, GET /me never contains `password_hash`\n2. Assert store `get_user()` return value never contains `password_hash`\n3. Add boundary test: register user, retrieve from store, verify only `username` and `name` returned\n4. Scan all error messages for hash leakage |
+| **Owner** | Dev (implementation) + TA (test validation) |
+| **Timeline** | Before release — Story 1.2 (registration) and Story 1.4 (get user) |
+| **Status** | Planned |
+| **Verification** | All T-08, T-20, T-23, T-28 scenarios pass |
+
+#### R-02: JWT Token Forgery (Score 6)
+
+| Field | Detail |
+|-------|--------|
+| **Strategy** | 1. Test expired tokens return 401\n2. Test malformed tokens (not a valid JWT structure) return 401\n3. Test unsigned/none-algorithm tokens return 401\n4. Test tampered payload (valid structure, altered claims) returns 401\n5. Test tokens signed with wrong secret return 401 |
+| **Owner** | Dev (implementation) + TA (test validation) |
+| **Timeline** | Before release — Story 1.4 (get user) |
+| **Status** | Planned |
+| **Verification** | All T-15, T-16, T-17, T-18, T-19 scenarios pass |
+
+---
+
+### Assumptions and Dependencies
+
+#### Architectural Assumptions
+
+1. **Single-process deployment** — No horizontal scaling; in-memory store is process-scoped (AD-3)
+2. **No HTTPS termination** — TLS handled by reverse proxy or deployment layer; API server receives plain HTTP
+3. **JWT secret is a constant** — No key rotation, no environment-based secret injection (AD-4)
+4. **No rate limiting** — Authentication endpoints are unprotected against brute force (acceptable for personal project)
+5. **No database** — All data lost on restart; this is by design, not a bug
+
+#### Dependencies
+
+| Dependency | Required By | Status |
+|-----------|-------------|--------|
+| PRD requirements finalized | Test design start | ✅ Complete |
+| Architecture document (ARCHITECTURE-SPINE.md) | Test design start | ✅ Complete |
+| Epics and stories defined | Epic-level test design | ✅ Complete |
+| UNKNOWN: JWT expiration time confirmed | Before P0 test implementation | ⏳ Pending |
+| UNKNOWN: bcrypt cost factor confirmed | Before P0 test implementation | ⏳ Pending |
+
+#### Risks to Plan
+
+| Risk | Impact | Contingency |
+|------|--------|-------------|
+| JWT expiry or bcrypt cost factor changes after test implementation | P0 tests may need updates | Design tests to accept configurable values; isolate magic numbers |
+| FastAPI version change breaks TestClient behavior | Test infrastructure affected | Pin FastAPI version in test requirements |
+
 ---
 
 ### NFR Testability Requirements
