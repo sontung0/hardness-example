@@ -1,11 +1,12 @@
 """JWT creation, verification, and FastAPI dependency."""
 
+import os
 import time
 
 import jwt
 from fastapi import Depends, HTTPException, Header
 
-SECRET_KEY = "super-secret-key-do-not-commit"
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "super-secret-key-do-not-commit")
 ALGORITHM = "HS256"
 TOKEN_EXPIRY_HOURS = 24
 

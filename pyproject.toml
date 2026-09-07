@@ -10,6 +10,9 @@ dependencies = [
     "PyJWT>=2.13.0",
 ]
 
+[project.scripts]
+bmad-auth = "main:main"
+
 [project.optional-dependencies]
 test = [
     "pytest>=8.0.0",
