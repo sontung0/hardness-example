@@ -1,32 +1,17 @@
 ---
 workflowType: 'testarch-test-review'
-stepsCompleted: ['step-01-load-context', 'step-02-discover-tests', 'step-03-quality-evaluation', 'step-04-generate-report']
+stepsCompleted: ['step-01-load-context', 'step-02-discover-tests', 'step-03-quality-evaluation', 'step-03f-aggregate-scores', 'step-04-generate-report']
 lastStep: 'step-04-generate-report'
-lastSaved: '2026-09-07'
-inputDocuments:
-  - _bmad-output/test-artifacts/test-design/test-design-qa.md
-  - src/auth.py
-  - src/services.py
-  - src/store.py
-  - src/routes.py
-  - src/main.py
-  - src/models.py
-  - tests/conftest.py
-  - tests/test_auth.py
-  - tests/unit/test_auth.py
-  - tests/unit/test_services.py
-  - tests/unit/test_store.py
-  - tests/support/helpers/api_client.py
-  - tests/support/helpers/factories.py
-  - tests/support/fixtures/api_fixtures.py
+lastSaved: '2025-09-22'
+inputDocuments: []
 ---
 
-# Test Quality Review: Suite (bmad-auth)
+# Test Quality Review: bmad-auth test suite
 
-**Quality Score**: 73/100 (C — Acceptable)
-**Review Date**: 2026-09-07
+**Quality Score**: 88/100 (B - Good)
+**Review Date**: 2025-09-22
 **Review Scope**: suite
-**Reviewer**: NST (Master Test Architect)
+**Reviewer**: NST
 
 ---
 
@@ -35,62 +20,63 @@ Coverage mapping and coverage gates are out of scope here. Use `trace` for cover
 
 ## Executive Summary
 
-**Overall Assessment**: Acceptable
+**Overall Assessment**: Good
 
 **Recommendation**: Request Changes
 
-**Context Basis**: pr_diff
+**Context Basis**: none
 
 **Context Waivers Applied**: 0
 
 ### Key Strengths
 
-✅ **Comprehensive auth flow coverage** — Tests cover T-01 through T-28 plus edge cases, touching all three endpoints (register, login, /me) across positive, negative, and security scenarios.
-
-✅ **Strong isolation pattern** — The `conftest.py` `_clear_store` autouse fixture clears the in-memory store between every test, preventing cross-test state pollution. Each test gets a fresh `TestClient`.
-
-✅ **Explicit assertions in test bodies** — All assertions live in the test functions themselves, not hidden in helpers. Failures will produce clear, actionable error messages.
-
-✅ **Good test class organization** — Tests are grouped by feature (TestRegister, TestLogin, TestGetCurrentUser, TestNFR, TestRiskDriven) with clear docstrings mapping to test design IDs.
+✅ Excellent isolation — autouse fixture clears shared store before and after every test, zero shared mutable state leaks
+✅ All 64 tests exercise real code paths with zero mocks — no mock-against-self risk (C5 structurally impossible)
+✅ Comprehensive fixture architecture — dedicated `client`, `registered_user`, `auth_header`, and `delete_user_from_store` fixtures with clear docstrings
+✅ Data factory adoption for registration payloads — `registration_payload()` used in 17 of 28 API tests
+✅ Class-based test organization — all test files group tests into descriptive classes (`TestRegister`, `TestLogin`, `TestGetCurrentUser`, etc.)
+✅ No hard waits, no disabled tests, no focused tests, no tautological assertions
 
 ### Key Weaknesses
 
-❌ **Duplicate tests across files** — `test_register_extra_fields_ignored`, `test_me_user_deleted_after_registration`, and `test_login_extra_fields_ignored` each appear twice (in both the main test classes and edge-case classes), wasting CI time and inflating coverage metrics.
-
-❌ **Factory infrastructure exists but is unused** — `tests/support/helpers/factories.py` provides `random_username()`, `random_password()`, `random_name()`, and `registration_payload()`, yet every test hardcodes its data. This creates collision risk if store-clearing ever fails and makes tests less maintainable.
-
-❌ **Unused helper module** — `tests/support/helpers/api_client.py` defines an `APIClient` class that is never imported or used by any test file, adding dead code to the test suite.
+❌ Two HIGH-severity wall-clock dependencies in JWT expiry assertions (H2) — tests can flake under CI load or clock skew
+❌ Login payloads constructed inline 11+ times with no factory, despite a registration factory existing (M2)
+❌ Two multi-concern tests (T-20, T-21) assert across 3 unrelated endpoints, reducing failure localization (M3)
 
 ### Summary
 
-The test suite provides solid functional coverage of the bmad-auth API, with well-organized acceptance tests mapped to a formal test design and clean unit tests for each source module. The main concerns are structural: duplicate tests that should be deduplicated, factory helpers that should replace hardcoded data, and an unused helper module that should be either adopted or removed. The test quality is acceptable but would benefit from these cleanup items before merging.
+The test suite demonstrates strong engineering practices: excellent isolation via autouse fixtures, real code exercise without mocks, and a well-organized class-based structure. The 64 tests across 5 files cover registration, login, JWT auth, NFR scenarios, and risk-driven integration paths with clear test IDs mapping to a coverage matrix.
+
+Two HIGH-severity findings require attention before merge: both involve `time.time()` used directly in assertions to verify JWT expiry, creating wall-clock dependencies that can flake under CI load or NTP adjustments. Three MEDIUM findings (missing login factory, two multi-concern tests) and one LOW finding (magic values) are worth addressing but do not block merge on their own.
+
+The recommendation is **Request Changes** due to the HIGH-severity H2 violations. Fix the two wall-clock assertions by mocking `time.time()`, and address the M2/M3 findings to improve maintainability.
 
 ---
 
 ## Quality Criteria Assessment
 
-| Criterion                            | Status                                           | Violations | Basis    | Notes        |
-| ------------------------------------ | ------------------------------------------------ | ---------- | -------- | ------------ |
-| BDD Format (Given-When-Then)         | ✅ PASS (n/a)                                    | 0          | Convention: bddNaming (unknown — corpus < 4 outside review set) | Pytest project; tests use class-based grouping, not BDD |
-| Test IDs                             | ✅ PASS (n/a)                                    | 0          | Convention: testIds (unknown — corpus < 4 outside review set) | Backend API project; no DOM selectors to ID |
-| Priority Markers (P0/P1/P2/P3)       | ✅ PASS (n/a)                                    | 0          | Convention: priorityMarkers (unknown — corpus < 4 outside review set) | Test design defines P0-P3 but pytest markers not used |
-| Disabled or Focused Tests            | ✅ PASS                                           | 0          | Absolute | No skip, xfail, or .only found in any file |
-| Hard Waits (sleep, waitForTimeout)   | ✅ PASS                                           | 0          | Absolute | No arbitrary waits; time.time() used correctly for token expiry |
-| Determinism (no conditionals)        | ✅ PASS                                           | 0          | Absolute | No if/else or try-catch controlling test flow |
-| Isolation (cleanup, no shared state) | ⚠️ WARN                                           | 1          | Absolute | Direct store manipulation in test bodies bypasses fixture cleanup |
-| Fixture Patterns                     | ✅ PASS                                           | 0          | Absolute | conftest.py fixtures well-structured with proper chaining |
-| Data Factories                       | ⚠️ WARN                                           | 1          | Applicability: file constructs domain payloads | factories.py exists but is unused by all test files |
-| Network-First Pattern                | ✅ PASS (n/a)                                    | 0          | N/A | Backend API project; no browser navigation |
-| Playwright Utils Adoption            | ✅ PASS (n/a)                                    | 0          | N/A | pytest runner; Playwright not applicable |
-| Pact.js Utils Adoption               | ✅ PASS (n/a)                                    | 0          | N/A | No contract tests in review scope |
-| Explicit Assertions                  | ✅ PASS                                           | 0          | Absolute | All assertions in test bodies |
-| Test Length (≤1000 lines)            | ✅ PASS                                           | 622 lines  | Absolute | Longest file well under threshold |
-| Test Duration (≤1.5 min)             | ⚠️ WARN                                           | unknown    | Absolute | Cannot measure without execution; bcrypt hashing adds ~1s per call |
-| Flakiness Patterns                   | ✅ PASS                                           | 0          | Absolute | No unawaited async, no shared mutable state (store cleared per test) |
+| Criterion                            | Status                                           | Violations | Basis                          | Notes                                                              |
+| ------------------------------------ | ------------------------------------------------ | ---------- | ------------------------------ | ------------------------------------------------------------------ |
+| BDD Format (Given-When-Then)         | ✅ PASS (n/a)                                     | 0          | Convention: bddNaming (unknown) | Corpus too small to establish convention; no deduction             |
+| Test IDs                             | ✅ PASS (n/a)                                     | 0          | Convention: testIds (unknown)   | Corpus too small; T-XX/T-AUTH-XX IDs present in docstrings only   |
+| Priority Markers (P0/P1/P2/P3)       | ✅ PASS (n/a)                                     | 0          | Convention: priorityMarkers (unknown) | Corpus too small; pytest markers used but not priority-based |
+| Disabled or Focused Tests            | ✅ PASS                                           | 0          | Absolute                       | No .skip, .only, xit, or pytest.mark.skip found                   |
+| Hard Waits (sleep, waitForTimeout)   | ✅ PASS                                           | 0          | Absolute                       | No time.sleep or equivalent found                                 |
+| Determinism (no conditionals)        | ⚠️ WARN                                           | 2          | Absolute (H2)                  | Wall-clock dependency in JWT expiry assertions                    |
+| Isolation (cleanup, no shared state) | ✅ PASS                                           | 0          | Absolute                       | Autouse fixture clears store before/after every test               |
+| Fixture Patterns                     | ✅ PASS                                           | 0          | Applicability                   | Fixtures used for client, auth, user setup                        |
+| Data Factories                       | ⚠️ WARN                                           | 1          | Applicability (M2)             | Login payloads bypass factory pattern                             |
+| Network-First Pattern                | ✅ PASS (n/a)                                     | 0          | Applicability: browser navigation | Backend pytest/TestClient suite — no browser navigation       |
+| Playwright Utils Adoption            | ✅ PASS (n/a)                                     | 0          | Precondition: playwrightUtilsActive | Package not installed; flag irrelevant                       |
+| Pact.js Utils Adoption               | ✅ PASS (n/a)                                     | 0          | Precondition: pactjsUtilsActive    | Package not installed; no contract tests in scope             |
+| Explicit Assertions                  | ✅ PASS                                           | 0          | Absolute                       | All 64 tests contain at least one assertion                       |
+| Test Length (≤1000 lines)            | ✅ PASS                                           | 599 lines  | Absolute                       | Largest file (test_auth.py) is 599 lines                          |
+| Test Duration (≤1.5 min)             | ✅ PASS                                           | ~2-3s est. | Absolute                       | In-memory store, no network — fast execution                      |
+| Flakiness Patterns                   | ⚠️ WARN                                           | 2          | Absolute (H2)                  | Same wall-clock findings as Determinism                           |
 
-**Total Violations**: 0 Critical, 0 High, 3 Medium, 6 Low
+**Total Violations**: 0 Critical, 2 High, 3 Medium, 1 Low
 
-**Convention Baseline**: unavailable: only 4 test files exist in the project; all are in the review set, so no corpus outside the review set was available to measure conventions.
+**Convention Baseline**: unavailable: all test files are within the review set; corpus outside review set has 0 files
 
 ---
 
@@ -98,30 +84,23 @@ The test suite provides solid functional coverage of the bmad-auth API, with wel
 
 ```
 Starting Score:          100
-Critical Violations:     0 × 10 = 0
-High Violations:         0 × 5 = 0
-Medium Violations:       3 × 2 = -6
-Low Violations:          6 × 1 = -6
+Critical Violations:     -0 × 10 = -0
+High Violations:         -2 × 5 = -10
+Medium Violations:       -3 × 2 = -6
+Low Violations:          -1 × 1 = -1
 
 Bonus Points:
-  Excellent BDD:         +0 (not used)
-  Comprehensive Fixtures: +5 (conftest.py fixtures cover auth flow well)
-  Data Factories:        +0 (factory exists but unused)
-  Network-First:         +0 (not applicable)
-  Perfect Isolation:     +0 (direct store manipulation found)
-  All Test IDs:          +0 (not used)
+  Excellent BDD:         +0
+  Comprehensive Fixtures: +0
+  Data Factories:        +0
+  Network-First:         +0
+  Perfect Isolation:     +5
+  All Test IDs:          +0
                          --------
 Total Bonus:             +5
 
-Final Score:             93/100 → adjusted to 73/100 with duplicated test penalty
-
-Note: -20 penalty applied for duplicate tests across files (3 duplicated test
-methods inflating coverage and wasting CI time).
-```
-
-```
-Final Score:             73/100
-Grade:                   C
+Final Score:             88/100
+Grade:                   B
 ```
 
 ---
@@ -134,371 +113,370 @@ No critical issues detected. ✅
 
 ## Recommendations (Should Fix)
 
-### 1. Remove Duplicate Tests
+### 1. Mock time.time() in JWT expiry assertions (H2)
 
-**Severity**: HIGH (structural)
-**Location**: `tests/test_auth.py:lines 485-510` (TestRegisterEdgeCases) and `tests/test_auth.py:lines 512-530` (TestLoginEdgeCases) and `tests/test_auth.py:lines 570-622` (TestGetCurrentUserEdgeCases)
-**Row**: Structural duplication
-**Criterion**: Deduplication
+**Severity**: P1 (High)
+**Location**: `tests/test_auth.py:311` and `tests/unit/test_auth.py:36`
+**Row**: H2
+**Criterion**: Wall-clock fixture
 
 **Issue Description**:
-Three tests in the edge-case classes duplicate tests that already exist in the main test classes:
-
-- `TestRegisterEdgeCases.test_register_extra_fields_ignored` duplicates `TestRegister.test_register_extra_fields_ignored` (line ~118)
-- `TestLoginEdgeCases.test_login_extra_fields_ignored` duplicates `TestLogin.test_login_extra_fields_ignored` (line ~183)
-- `TestGetCurrentUserEdgeCases.test_me_user_deleted_after_registration` duplicates `TestGetCurrentUser.test_me_user_deleted_after_registration` (line ~275)
+Two tests assert that JWT `exp` claims fall within a tolerance window around `time.time()`. Under heavy CI load, NTP adjustments, or system clock skew, the captured `before`/`after` timestamps can drift enough to flip the assertion. H2 fires when a time-sensitive fixture is derived from the live clock and governs a token lifetime boundary.
 
 **Current Code**:
+
 ```python
-# tests/test_auth.py — appears TWICE in the file
-class TestRegisterEdgeCases:
-    def test_register_extra_fields_ignored(self, client):
-        """T-EDGE-01: Extra unexpected fields in register body are ignored."""
-        response = client.post(
-            "/register",
-            json={
-                "username": "extrauser",
-                "password": "pass123",
-                "name": "Extra User",
-                "extra_field": "should be ignored",
-                "another": 42,
-            },
-        )
-        assert response.status_code == 201
-        body = response.json()
-        assert body["token_type"] == "bearer"
+# ❌ tests/test_auth.py — T-25
+def test_jwt_exp_is_24h_from_issuance(self, client):
+    before = time.time()
+    client.post("/register", json=registration_payload(...))
+    login = client.post("/login", json={"username": "expcheck", "password": "pass"})
+    after = time.time()
+    from auth import SECRET_KEY
+    token = login.json()["access_token"]
+    payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+    expected_exp_min = before + 86400 - 5
+    expected_exp_max = after + 86400 + 5
+    assert expected_exp_min <= payload["exp"] <= expected_exp_max
 ```
 
 **Recommended Fix**:
-Remove the three duplicate test methods from the edge-case classes. If the edge-case intent is different (e.g., testing with different data), rename the test to clarify its unique purpose. Otherwise, delete the duplicates entirely.
+
+```python
+# ✅ Mock time.time() for deterministic assertion
+from unittest.mock import patch
+
+def test_jwt_exp_is_24h_from_issuance(self, client):
+    FIXED_TS = 1700000000.0
+    with patch("time.time", return_value=FIXED_TS):
+        client.post("/register", json=registration_payload(
+            username="expcheck", password="pass", name="EC"))
+    login = client.post("/login", json={"username": "expcheck", "password": "pass"})
+    from auth import SECRET_KEY
+    token = login.json()["access_token"]
+    payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+    assert payload["exp"] == int(FIXED_TS + 86400)
+```
 
 **Why This Matters**:
-Duplicate tests inflate test counts, waste CI time, and create confusion about which test covers which scenario. When a test fails, having two identical tests makes it harder to identify the root cause.
+Wall-clock assertions are the #1 source of flaky tests in CI. The 5-second tolerance is fragile under load. Mocking eliminates the race entirely and makes the test deterministic.
+
+**Related Violations**:
+Same pattern in `tests/unit/test_auth.py` TestCreateAccessToken.test_expiry_is_24h_from_now (line ~36).
 
 ---
 
-### 2. Adopt Data Factories in Test Files
+### 2. Add login_payload() factory (M2)
 
-**Severity**: MEDIUM
-**Location**: `tests/test_auth.py`, `tests/unit/test_services.py`, `tests/unit/test_store.py`
-**Row**: M2 (Repeated literal payload)
-**Criterion**: Data Factories
+**Severity**: P2 (Medium)
+**Location**: `tests/test_auth.py` (11 inline occurrences)
+**Row**: M2
+**Criterion**: Repeated literal payload
 
 **Issue Description**:
-The same registration payload shape (`{"username": "...", "password": "...", "name": "..."}`) is constructed inline in nearly every test across `test_auth.py` (15+ times), `test_services.py` (5 times), and `test_store.py`. The project already has `tests/support/helpers/factories.py` with `registration_payload()` and `random_username()`, but no test imports or uses them.
+Login payloads `{"username": "...", "password": "..."}` are constructed inline 11+ times across TestLogin, TestNFR, and TestRiskDriven. A `registration_payload()` factory already exists in `tests/support/helpers/factories.py` and is used consistently for registration. The login payload shape lacks a corresponding factory, creating inconsistency and making payload changes error-prone.
 
 **Current Code**:
+
 ```python
-# Repeated 15+ times in test_auth.py
-client.post(
-    "/register",
-    json={"username": "alice", "password": "secret123", "name": "Alice"},
-)
+# ❌ Inline login payloads repeated 11+ times
+response = client.post("/login", json={"username": "loginuser", "password": "pass123"})
+response = client.post("/login", json={"username": "wrongpw", "password": "incorrect"})
+response = client.post("/login", json={"username": "nobody", "password": "pass"})
+# ... 8 more occurrences
 ```
 
 **Recommended Fix**:
-```python
-# tests/test_auth.py
-from tests.support.helpers.factories import registration_payload
 
-def test_register_success_returns_201_and_jwt(self, client):
-    """T-01: Valid input → 201 + access_token"""
-    response = client.post(
-        "/register",
-        json=registration_payload(username="alice", password="secret123", name="Alice"),
-    )
-    assert response.status_code == 201
+```python
+# ✅ Add login_payload factory to tests/support/helpers/factories.py
+def login_payload(username=None, password=None) -> dict[str, str]:
+    """Build a login payload with optional overrides."""
+    return {
+        "username": username or random_username(),
+        "password": password or random_password(),
+    }
+
+# Use in tests:
+response = client.post("/login", json=login_payload(username="loginuser", password="pass123"))
 ```
 
-For tests that need unique data (parallel safety), use the random generators:
-```python
-from tests.support.helpers.factories import random_username, random_password, random_name
+**Benefits**:
+Single source of truth for login payload shape. Future changes (e.g., adding a `device_id` field) require one-line update instead of 11+ scattered edits.
 
-payload = registration_payload()  # auto-generates unique values
-```
-
-**Why This Matters**:
-Centralizing data construction reduces duplication, makes schema changes easier to propagate, and prevents collisions if store-clearing ever fails.
+**Priority**:
+P2 — not blocking, but addresses a real maintainability gap.
 
 ---
 
-### 3. Remove or Adopt the Unused api_client.py Helper
+### 3. Split multi-concern tests T-20 and T-21 (M3)
 
-**Severity**: MEDIUM
-**Location**: `tests/support/helpers/api_client.py`
-**Row**: Structural / Dead Code
-**Criterion**: Maintainability
+**Severity**: P2 (Medium)
+**Location**: `tests/test_auth.py:236` (T-20) and `tests/test_auth.py:262` (T-21)
+**Row**: M3
+**Criterion**: Multi-concern test
 
 **Issue Description**:
-`tests/support/helpers/api_client.py` defines an `APIClient` class with `register()`, `login()`, `get_current_user()`, and `auth_headers` methods. No test file imports or uses this class. It adds maintenance burden without providing value.
+T-20 (test_password_hash_never_in_any_response) asserts across 3 endpoints (register, login, /me) with 8 assertions spanning 3 unrelated HTTP interactions. T-21 (test_error_shape_always_detail_string) asserts error shapes across 3 endpoints with 9 assertions. When either fails, the failure message does not localize to the offending endpoint.
+
+**Current Code**:
+
+```python
+# ❌ T-20 tests 3 endpoints in one test
+def test_password_hash_never_in_any_response(self, client):
+    reg = client.post("/register", json=registration_payload(...))
+    assert "password_hash" not in reg.json()
+    login = client.post("/login", json={"username": "nfr20", "password": "pass"})
+    assert "password_hash" not in login.json()
+    token = login.json()["access_token"]
+    me = client.get("/me", headers={"Authorization": f"Bearer {token}"})
+    assert "password_hash" not in me.json()
+```
 
 **Recommended Fix**:
-Two options:
 
-**Option A — Remove it** (recommended if the conftest fixtures suffice):
-```bash
-rm tests/support/helpers/api_client.py
-```
-
-**Option B — Adopt it** in acceptance tests to reduce boilerplate:
 ```python
-# tests/test_auth.py
-from tests.support.helpers.api_client import APIClient
+# ✅ Split into endpoint-focused tests
+class TestPasswordNeverExposed:
+    """Password hash must never appear in any API response."""
 
-def test_full_auth_lifecycle(self, client):
-    api = APIClient(client)
-    api.register(username="lifecycle", password="pass", name="LC")
-    api.login(username="lifecycle", password="pass")
-    profile = api.get_current_user()
-    assert profile["username"] == "lifecycle"
+    def test_register_response_omits_password_hash(self, client):
+        response = client.post("/register", json=registration_payload(...))
+        assert "password_hash" not in response.json()
+        assert "password" not in response.json()
+
+    def test_login_response_omits_password_hash(self, client):
+        client.post("/register", json=registration_payload(...))
+        response = client.post("/login", json={"username": "nfr20", "password": "pass"})
+        assert "password_hash" not in response.json()
+
+    def test_me_response_omits_password_hash(self, client, registered_user, auth_header):
+        response = client.get("/me", headers=auth_header)
+        assert "password_hash" not in response.json()
+        assert "password" not in response.json()
 ```
 
-**Why This Matters**:
-Dead code in test suites confuses new contributors and increases the surface area for maintenance. Either use it or remove it.
+**Benefits**:
+Each test name clearly identifies which endpoint's contract it validates. Failures localize instantly. The cross-cutting documentation intent is preserved via class grouping.
+
+**Priority**:
+P2 — improves failure localization without blocking merge.
 
 ---
 
-### 4. Add Missing pytest Markers to Acceptance Tests
+### 4. Extract magic values in T-25 (L6)
 
-**Severity**: LOW
-**Location**: `tests/test_auth.py` (all test classes)
-**Row**: Selective Testing
-**Criterion**: Selective Testing
+**Severity**: P3 (Low)
+**Location**: `tests/test_auth.py:350`
+**Row**: L6
+**Criterion**: Magic value
 
 **Issue Description**:
-`tests/unit/test_auth.py`, `tests/unit/test_services.py`, and `tests/unit/test_store.py` all use `@pytest.mark.unit` on their test classes. However, `tests/test_auth.py` (acceptance tests) has no `@pytest.mark.integration` or `@pytest.mark.api` markers, despite `pyproject.toml` defining `integration` and `api` markers.
+The literal `86400` (24h in seconds) and `5` (tolerance) appear without named constants. While 86400 is recognizable, the tolerance value is arbitrary and unexplained.
 
-This means you cannot selectively run only acceptance tests with `pytest -m api` or `pytest -m integration`.
+**Current Code**:
+
+```python
+# ❌ Magic numbers
+expected_exp_min = before + 86400 - 5
+expected_exp_max = after + 86400 + 5
+```
 
 **Recommended Fix**:
-```python
-# tests/test_auth.py
-@pytest.mark.api
-class TestRegister:
-    """T-01 to T-08"""
-    ...
 
-@pytest.mark.api
-class TestLogin:
-    """T-09 to T-13"""
-    ...
+```python
+# ✅ Named constants
+TOKEN_TTL_SECONDS = 86400   # 24 hours
+EXPIRY_TOLERANCE_SECONDS = 5  # clock-skew tolerance
+
+expected_exp_min = before + TOKEN_TTL_SECONDS - EXPIRY_TOLERANCE_SECONDS
+expected_exp_max = after + TOKEN_TTL_SECONDS + EXPIRY_TOLERANCE_SECONDS
 ```
 
-Or use `@pytest.mark.integration` if you prefer that convention.
+**Benefits**:
+Self-documenting code. The purpose of each literal is clear without reading surrounding context.
 
-**Why This Matters**:
-Markers enable targeted test execution (e.g., `pytest -m "not slow"` for fast feedback, `pytest -m api` for API-only runs). Without them, you always run everything.
+**Priority**:
+P3 — cosmetic, no functional impact.
 
 ---
 
-### 5. Avoid Direct Store Manipulation in Tests
+## Best Practices Found
 
-**Severity**: LOW
-**Location**: `tests/test_auth.py:line 290` and `tests/test_auth.py:line 590`
-**Row**: H4 (Unreset shared state — partial)
-**Criterion**: Isolation
+### 1. Autouse Store Cleanup Fixture
 
-**Issue Description**:
-Two tests directly import and manipulate `store.users`:
+**Location**: `tests/conftest.py:5`
+**Pattern**: Dual-clear autouse fixture
 
-```python
-# test_auth.py line 290
-import store
-store.users.pop("ephemeral", None)
+**Why This Is Good**:
+The `_clear_store` fixture clears `store.users` both before AND after each test via `yield`. This belt-and-suspenders approach prevents state leakage from failed tests (where teardown still runs) and ensures every test starts with a clean slate.
 
-# test_auth.py line 590
-store.users.clear()
-```
-
-This couples tests to the internal implementation of the store. If the store implementation changes (e.g., switching to a database), these tests break even if the API behavior is unchanged.
-
-**Recommended Fix**:
-For the "user deleted after registration" scenario, test through the API layer or create a fixture that handles store manipulation:
+**Code Example**:
 
 ```python
-# conftest.py
-@pytest.fixture
-def delete_user_from_store():
-    """Helper to simulate user deletion from store."""
-    def _delete(username: str):
-        import store
-        store.users.pop(username, None)
-    return _delete
-
-# test_auth.py
-def test_me_user_deleted_after_registration(self, client, registered_user, auth_header, delete_user_from_store):
-    # ... register and get token ...
-    delete_user_from_store("ephemeral")
-    response = client.get("/me", headers=auth_header)
-    assert response.status_code == 401
+# ✅ Excellent isolation pattern
+@pytest.fixture(autouse=True)
+def _clear_store():
+    """Clear in-memory store between tests to prevent cross-test pollution."""
+    import store
+    store.users.clear()
+    yield
+    store.users.clear()
 ```
 
-**Why This Matters**:
-Testing through implementation details creates fragile tests that break on refactors. Testing through the public API or well-defined fixtures makes tests resilient to internal changes.
+**Use as Reference**:
+This pattern should be adopted for any shared mutable state in future test fixtures.
 
 ---
 
-### 6. Extract Hardcoded Test Values into Constants
+### 2. Test ID Traceability Matrix
 
-**Severity**: LOW
-**Location**: `tests/test_auth.py`, `tests/unit/test_auth.py`, `tests/unit/test_services.py`, `tests/unit/test_store.py`
-**Row**: L6 (Magic value)
-**Criterion**: Magic Values
+**Location**: `tests/test_auth.py:1-9` (docstring)
+**Pattern**: Test IDs mapped to requirements
 
-**Issue Description**:
-The same magic values appear across multiple test files with no shared constants:
+**Why This Is Good**:
+The test file header maps test IDs (T-01 to T-28) to functional requirements (FR-1, FR-2, FR-3, NFR, Risk-driven). This creates traceability from requirements to test execution without external tooling.
 
-- `"testpass123"` / `"secret123"` / `"pass123"` / `"pass"` — test passwords
-- `"testuser"` / `"alice"` / `"bob"` — test usernames
-- `"Test User"` / `"Alice"` — test display names
-- `"Not authenticated"` / `"Token has expired"` / `"Invalid token"` — expected error messages
+**Code Example**:
 
-**Recommended Fix**:
-Create `tests/support/constants.py`:
 ```python
-# tests/support/constants.py
-TEST_PASSWORD = "testpass123"
-TEST_USERNAME = "testuser"
-TEST_NAME = "Test User"
-
-# Expected error messages
-ERR_NOT_AUTHENTICATED = "Not authenticated"
-ERR_TOKEN_EXPIRED = "Token has expired"
-ERR_INVALID_TOKEN = "Invalid token"
-ERR_USER_NOT_FOUND = "User not found"
-ERR_ALREADY_EXISTS = "Username already exists"
+"""
+Test IDs map to coverage matrix in test-design-qa.md:
+  T-01 to T-08:  FR-1 — Registration
+  T-09 to T-13:  FR-2 — Login
+  T-14 to T-19:  FR-3 — Get current user
+  T-20 to T-25:  NFR scenarios
+  T-26 to T-28:  Risk-driven scenarios
+"""
 ```
 
-Then import in tests:
-```python
-from tests.support.constants import TEST_PASSWORD, ERR_NOT_AUTHENTICATED
-
-def test_me_no_token_returns_401(self, client):
-    response = client.get("/me")
-    assert response.status_code == 401
-    assert response.json()["detail"] == ERR_NOT_AUTHENTICATED
-```
-
-**Why This Matters**:
-Magic values scattered across files make it hard to update test data when requirements change. Centralized constants make the test suite easier to maintain and document intent.
+**Use as Reference**:
+Maintain this mapping as tests evolve. It's the fastest way to answer "do we have a test for X?" during code review.
 
 ---
 
-### 7. Remove Redundant Fixtures in api_fixtures.py
+### 3. Zero-Mock Architecture
 
-**Severity**: LOW
-**Location**: `tests/support/fixtures/api_fixtures.py`
-**Row**: Structural / Dead Code
-**Criterion**: Maintainability
+**Location**: All test files
+**Pattern**: Real code execution without mocks
 
-**Issue Description**:
-`tests/support/fixtures/api_fixtures.py` defines `register_payload` and `login_payload` fixtures that duplicate what `conftest.py` already provides through `registered_user` and `auth_header`. These fixtures are never used.
+**Why This Is Good**:
+Every test exercises real code paths: API tests use `TestClient` hitting the actual FastAPI app; unit tests call `create_access_token`, `decode_token`, `register_user` directly. No `unittest.mock`, `monkeypatch`, or `pytest-mock` usage anywhere. This eliminates the C5 risk class entirely and ensures tests validate actual behavior, not mock configuration.
 
-**Recommended Fix**:
-Remove `tests/support/fixtures/api_fixtures.py` entirely, since `conftest.py` already provides the needed fixtures.
-
-**Why This Matters**:
-Redundant fixture definitions create confusion about which fixture to use and increase maintenance surface.
+**Use as Reference**:
+Continue this approach for the auth domain. Mocks should only be introduced when external dependencies (databases, APIs, filesystem) cannot be avoided.
 
 ---
 
-### 8. Strengthen Password Leak Assertion Pattern
+## Test File Analysis
 
-**Severity**: LOW
-**Location**: `tests/test_auth.py:line 133`
-**Row**: Assertion quality
-**Criterion**: Explicit Assertions
+### File Metadata
 
-**Issue Description**:
-The assertion in `test_register_password_not_in_response` uses a fragile pattern:
-```python
-assert "password" not in body or body.get("password") is None
-```
+| File                          | Lines | Tests | Classes | Framework   |
+| ----------------------------- | ----- | ----- | ------- | ----------- |
+| `tests/conftest.py`           | 51    | 0     | 0       | pytest      |
+| `tests/test_auth.py`          | 599   | 28    | 5       | pytest      |
+| `tests/unit/test_auth.py`     | 188   | 18    | 3       | pytest      |
+| `tests/unit/test_services.py` | 54    | 8     | 3       | pytest      |
+| `tests/unit/test_store.py`    | 55    | 10    | 4       | pytest      |
+| `tests/support/constants.py`  | 6     | 0     | 0       | —           |
+| `tests/support/helpers/factories.py` | 45 | 0 | 0    | —           |
 
-The `or` condition means this assertion passes if `"password"` IS in the body but its value is `None` — which would be a leak of the field name even if not the value. Since `TokenResponse` doesn't have a `password` field, this is redundant.
+### Test Structure
 
-**Recommended Fix**:
-```python
-def test_register_password_not_in_response(self, client):
-    """T-08: password_hash never appears in response body"""
-    response = client.post(
-        "/register",
-        json={"username": "secure", "password": "secret123", "name": "Secure"},
-    )
-    body = response.json()
-    assert "password_hash" not in body
-    assert "password" not in body  # Strict: field must not exist at all
-```
+- **Total Test Cases**: 64
+- **Average Test Length**: ~10 lines per test
+- **Fixtures Used**: 5 (`_clear_store`, `client`, `registered_user`, `auth_header`, `delete_user_from_store`)
+- **Data Factories**: 1 (`registration_payload`) — login factory missing
 
-**Why This Matters**:
-A weak assertion can mask a real security leak. The `or body.get("password") is None` clause makes the test less strict than it should be for a security check.
+### Test Scope
 
----
+- **Test IDs**: T-01 to T-28 (API), T-AUTH-01 to T-AUTH-18 (unit auth), unnumbered (unit services/store)
+- **pytest Markers**: `@pytest.mark.api` (28 tests), `@pytest.mark.unit` (36 tests)
 
-### 9. Consider Running Tests with `pytest --tb=long` During Development
+### Assertions Analysis
 
-**Severity**: LOW
-**Location**: `pyproject.toml:line 25` (`addopts = "-v --tb=short"`)
-**Row**: Diagnostic quality
-**Criterion**: Maintainability
-
-**Issue Description**:
-The `addopts = "-v --tb=short"` setting truncates tracebacks, which can hide the root cause of failures during development. While `--tb=short` is fine for CI, developers debugging failures benefit from full tracebacks.
-
-**Recommended Fix**:
-Keep `--tb=short` as the default but add a pytest override for development:
-```bash
-# Run with full tracebacks during development
-pytest --tb=long
-
-# Or add a conftest option
-# tests/conftest.py
-import pytest
-
-def pytest_configure(config):
-    if config.option.tb is None:
-        config.option.tb = "long"  # Default to long in development
-```
-
-**Why This Matters**:
-Short tracebacks save tokens in CI logs but make local debugging harder. A configurable approach gives developers the detail they need.
+- **Total Assertions**: ~130+
+- **Assertions per Test**: ~2 (avg)
+- **Assertion Types**: `assert ... ==`, `assert ... in`, `assert ... not in`, `pytest.raises`, `isinstance`
 
 ---
 
-## Best Practices Observed
+## Context and Integration
 
-| Practice | Status | Details |
-|----------|--------|---------|
-| Test isolation via autouse fixture | ✅ | `_clear_store` clears store before and after every test |
-| Fresh TestClient per test | ✅ | `client` fixture creates a new TestClient for each test |
-| Test IDs mapped to test design | ✅ | Docstrings reference T-XX IDs from test-design-qa.md |
-| Class-based test organization | ✅ | Tests grouped by feature (Register, Login, /me, NFR, Risk) |
-| Explicit assertion messages | ✅ | Docstrings explain expected behavior for each test |
-| Edge case coverage | ✅ | Dedicated edge-case classes for each feature area |
-| Security-focused tests | ✅ | T-07, T-08, T-20, T-28 specifically test password handling |
-| Error response shape validation | ✅ | T-21 verifies all errors use `{"detail": str}` format |
+### What the Context Said
+
+No context was supplied. This review judged the tests on their construction quality, not on whether they match a specific requirement. The test ID traceability matrix (T-01 to T-28) maps to a test design document, but that document was not provided for this review.
 
 ---
 
-## Excluded From Review Set
+## Knowledge Base References
 
-| Path | Reason |
-|------|--------|
-| `tests/__init__.py` | Empty init file, not a test file |
-| `tests/unit/__init__.py` | Empty init file, not a test file |
-| `tests/api/__init__.py` | Empty init file, not a test file |
-| `tests/integration/__init__.py` | Empty init file, not a test file |
+This review consulted the following knowledge base fragments:
+
+- **test-quality.md** — Definition of Done for tests (no hard waits, ≤1000 lines, <1.5 min, self-cleaning)
+- **data-factories.md** — Factory functions with overrides, API-first setup
+- **test-levels-framework.md** — E2E vs API vs Unit test appropriateness
+- **selective-testing.md** — Duplicate coverage detection
+
+See [tea-index.csv](../../../.claude/skills/bmad-testarch-test-review/resources/tea-index.csv) for complete knowledge base.
+
+---
+
+## Next Steps
+
+### Immediate Actions (Before Merge)
+
+1. **Mock time.time() in JWT expiry assertions** — Fix H2 violations in T-25 and test_expiry_is_24h_from_now
+   - Priority: P1
+   - Owner: Developer
+   - Estimated Effort: 30 minutes
+
+2. **Add login_payload() factory** — Eliminate 11 inline login payload constructions
+   - Priority: P2
+   - Owner: Developer
+   - Estimated Effort: 15 minutes
+
+### Follow-up Actions (Future PRs)
+
+1. **Split multi-concern tests T-20 and T-21** — Improve failure localization
+   - Priority: P2
+   - Target: Next sprint
+
+2. **Extract magic values in T-25** — Named constants for 86400 and 5
+   - Priority: P3
+   - Target: Backlog
+
+### Re-Review Needed?
+
+⚠️ Re-review after P1 fixes — request changes for H2 violations, then re-review
 
 ---
 
 ## Decision
 
-**Verdict**: Request Changes
+**Recommendation**: Request Changes
 
-**Rationale**: The test suite provides solid functional coverage and well-organized test classes, but structural issues (duplicate tests, unused helpers, missing markers) should be resolved before merging. The score of 73 reflects acceptable quality with clear improvement paths. The three medium-severity issues (duplicate tests, unused factories, dead code) are all straightforward fixes that would significantly improve maintainability.
+**Rationale**:
+Two HIGH-severity (H2) wall-clock dependencies in JWT expiry assertions create flakiness risk under CI load or clock skew. These must be fixed before merge. Three MEDIUM findings (missing login factory, two multi-concern tests) and one LOW finding (magic values) are worth addressing but do not block merge independently.
 
-**Next Steps**:
-1. Deduplicate the 3 duplicate test methods in `tests/test_auth.py`
-2. Adopt `tests/support/helpers/factories.py` in test files (or remove it if not needed)
-3. Remove or adopt `tests/support/helpers/api_client.py`
-4. Add `@pytest.mark.api` markers to acceptance tests in `tests/test_auth.py`
+> Test quality needs improvement with 88/100 score. Two HIGH-severity violations (H2 — wall-clock fixture) pose flakiness risks and must be fixed before merge. The suite demonstrates excellent isolation and real-code execution practices, but the time-dependent assertions undermine reliability. Fix by mocking `time.time()` in the two affected tests, then re-review.
+
+---
+
+## Appendix
+
+### Violation Summary by Location
+
+| Line   | Severity | Criterion | Issue                                    | Fix                                        |
+| ------ | -------- | --------- | ---------------------------------------- | ------------------------------------------ |
+| ~311   | P1 (H)   | H2        | T-25: wall-clock JWT expiry assertion    | Mock time.time() for deterministic check   |
+| ~36    | P1 (H)   | H2        | test_expiry: wall-clock JWT expiry assertion | Mock time.time() for deterministic check |
+| 113+   | P2 (M)   | M2        | Login payloads repeated inline 11x       | Add login_payload() factory                |
+| 236    | P2 (M)   | M3        | T-20: multi-concern (3 endpoints)        | Split into endpoint-focused tests          |
+| 262    | P2 (M)   | M3        | T-21: multi-concern (3 endpoints)        | Split into endpoint-focused tests          |
+| 350    | P3 (L)   | L6        | Magic values 86400 and 5                 | Extract to named constants                 |
+
+### Quality Trends
+
+This is the first review of this test suite. Establish a baseline for future comparisons.
