@@ -15,11 +15,21 @@ import jwt
 import pytest
 from fastapi.testclient import TestClient
 
+from tests.support.constants import (
+    ERR_NOT_AUTHENTICATED,
+    ERR_USER_NOT_FOUND,
+    TEST_NAME,
+    TEST_PASSWORD,
+    TEST_USERNAME,
+)
+from tests.support.helpers.factories import registration_payload
+
 
 # ---------------------------------------------------------------------------
 # FR-1: User Registration
 # ---------------------------------------------------------------------------
 
+@pytest.mark.api
 class TestRegister:
     """T-01 to T-08"""
 
@@ -27,7 +37,7 @@ class TestRegister:
         """T-01: Valid input → 201 + access_token"""
         response = client.post(
             "/register",
-            json={"username": "alice", "password": "secret123", "name": "Alice"},
+            json=registration_payload(username="alice", password="secret123", name="Alice"),
         )
         assert response.status_code == 201
         body = response.json()
@@ -65,11 +75,11 @@ class TestRegister:
         """T-05: Duplicate username → 409"""
         client.post(
             "/register",
-            json={"username": "alice", "password": "pass1", "name": "Alice"},
+            json=registration_payload(username="alice", password="pass1", name="Alice"),
         )
         response = client.post(
             "/register",
-            json={"username": "alice", "password": "pass2", "name": "Alice Again"},
+            json=registration_payload(username="alice", password="pass2", name="Alice Again"),
         )
         assert response.status_code == 409
         assert "detail" in response.json()
@@ -78,11 +88,11 @@ class TestRegister:
         """T-06: 'Bob' and 'bob' resolve to the same user"""
         client.post(
             "/register",
-            json={"username": "Bob", "password": "pass1", "name": "Bob First"},
+            json=registration_payload(username="Bob", password="pass1", name="Bob First"),
         )
         response = client.post(
             "/register",
-            json={"username": "bob", "password": "pass2", "name": "Bob Second"},
+            json=registration_payload(username="bob", password="pass2", name="Bob Second"),
         )
         assert response.status_code == 409
 
@@ -92,7 +102,7 @@ class TestRegister:
 
         client.post(
             "/register",
-            json={"username": "hashcheck", "password": "mypassword", "name": "HC"},
+            json=registration_payload(username="hashcheck", password="mypassword", name="HC"),
         )
         # Verify via the store directly
         from store import users
@@ -109,20 +119,18 @@ class TestRegister:
         """T-08: password_hash never appears in response body"""
         response = client.post(
             "/register",
-            json={"username": "secure", "password": "secret123", "name": "Secure"},
+            json=registration_payload(username="secure", password="secret123", name="Secure"),
         )
         body = response.json()
         assert "password_hash" not in body
-        assert "password" not in body or body.get("password") is None
+        assert "password" not in body
 
     def test_register_extra_fields_ignored(self, client):
         """Extra fields in request body are silently ignored"""
         response = client.post(
             "/register",
             json={
-                "username": "extra",
-                "password": "pass",
-                "name": "Extra",
+                **registration_payload(username="extra", password="pass", name="Extra"),
                 "age": 30,
                 "role": "admin",
             },
@@ -136,6 +144,7 @@ class TestRegister:
 # FR-2: User Login
 # ---------------------------------------------------------------------------
 
+@pytest.mark.api
 class TestLogin:
     """T-09 to T-13"""
 
@@ -143,7 +152,7 @@ class TestLogin:
         """T-09: Valid credentials → 200 + JWT"""
         client.post(
             "/register",
-            json={"username": "loginuser", "password": "pass123", "name": "Login User"},
+            json=registration_payload(username="loginuser", password="pass123", name="Login User"),
         )
         response = client.post(
             "/login",
@@ -158,7 +167,7 @@ class TestLogin:
         """T-10: Wrong password → 401"""
         client.post(
             "/register",
-            json={"username": "wrongpw", "password": "correct", "name": "WP"},
+            json=registration_payload(username="wrongpw", password="correct", name="WP"),
         )
         response = client.post(
             "/login",
@@ -198,7 +207,7 @@ class TestLogin:
         """Extra fields in login request are silently ignored"""
         client.post(
             "/register",
-            json={"username": "extra1", "password": "pass", "name": "Extra"},
+            json=registration_payload(username="extra1", password="pass", name="Extra"),
         )
         response = client.post(
             "/login",
@@ -212,6 +221,7 @@ class TestLogin:
 # FR-3: Get Current User
 # ---------------------------------------------------------------------------
 
+@pytest.mark.api
 class TestGetCurrentUser:
     """T-14 to T-19"""
 
@@ -220,8 +230,8 @@ class TestGetCurrentUser:
         response = client.get("/me", headers=auth_header)
         assert response.status_code == 200
         body = response.json()
-        assert body["username"] == "testuser"
-        assert body["name"] == "Test User"
+        assert body["username"] == TEST_USERNAME
+        assert body["name"] == TEST_NAME
         assert "password_hash" not in body
 
     def test_me_no_token_returns_401(self, client):
@@ -233,7 +243,7 @@ class TestGetCurrentUser:
         """T-16: Expired token → 401"""
         client.post(
             "/register",
-            json={"username": "expired", "password": "pass", "name": "Exp"},
+            json=registration_payload(username="expired", password="pass", name="Exp"),
         )
         # Create an expired token
         from auth import SECRET_KEY
@@ -255,27 +265,27 @@ class TestGetCurrentUser:
         )
         assert response.status_code == 401
 
-    def test_me_user_deleted_after_registration(self, client):
+    def test_me_user_deleted_after_registration(self, client, delete_user_from_store):
         """Token valid but user no longer in store → 401"""
-        registered = client.post(
+        # Register a separate user for this test
+        reg = client.post(
             "/register",
-            json={"username": "ephemeral", "password": "pass", "name": "Eph"},
+            json=registration_payload(username="ephemeral", password="pass", name="Eph"),
         )
-        token = registered.json()["access_token"]
+        token = reg.json()["access_token"]
 
-        # Remove user from store directly
-        import store
-        store.users.pop("ephemeral", None)
+        # Remove user from store via fixture
+        delete_user_from_store("ephemeral")
 
         response = client.get("/me", headers={"Authorization": f"Bearer {token}"})
         assert response.status_code == 401
-        assert response.json()["detail"] == "User not found"
+        assert response.json()["detail"] == ERR_USER_NOT_FOUND
 
     def test_me_tampered_payload_returns_401(self, client):
         """T-18: Tampered payload → 401"""
         client.post(
             "/register",
-            json={"username": "tamper", "password": "pass", "name": "Tamper"},
+            json=registration_payload(username="tamper", password="pass", name="Tamper"),
         )
         from auth import SECRET_KEY
 
@@ -309,6 +319,7 @@ class TestGetCurrentUser:
 # NFR Scenarios
 # ---------------------------------------------------------------------------
 
+@pytest.mark.api
 class TestNFR:
     """T-20 to T-25"""
 
@@ -317,10 +328,10 @@ class TestNFR:
         # Register
         reg = client.post(
             "/register",
-            json={"username": "nfr20", "password": "pass", "name": "NFR20"},
+            json=registration_payload(username="nfr20", password="pass", name="NFR20"),
         )
         assert "password_hash" not in reg.json()
-        assert "password" not in reg.json() or reg.json().get("password") is None
+        assert "password" not in reg.json()
 
         # Login
         login = client.post(
@@ -373,7 +384,7 @@ class TestNFR:
         """T-23: store.get_user() returns only username + name, never password_hash"""
         client.post(
             "/register",
-            json={"username": "store23", "password": "pass", "name": "S23"},
+            json=registration_payload(username="store23", password="pass", name="S23"),
         )
         from store import get_user
 
@@ -387,7 +398,7 @@ class TestNFR:
         """T-24: JWT sub claim = lowercased username"""
         client.post(
             "/register",
-            json={"username": "Alice", "password": "pass", "name": "Alice"},
+            json=registration_payload(username="Alice", password="pass", name="Alice"),
         )
         from auth import SECRET_KEY
 
@@ -403,7 +414,7 @@ class TestNFR:
         before = time.time()
         client.post(
             "/register",
-            json={"username": "expcheck", "password": "pass", "name": "EC"},
+            json=registration_payload(username="expcheck", password="pass", name="EC"),
         )
         login = client.post(
             "/login", json={"username": "expcheck", "password": "pass"}
@@ -422,6 +433,7 @@ class TestNFR:
 # Risk-Driven Scenarios
 # ---------------------------------------------------------------------------
 
+@pytest.mark.api
 class TestRiskDriven:
     """T-26 to T-28"""
 
@@ -430,7 +442,7 @@ class TestRiskDriven:
         # Register
         reg = client.post(
             "/register",
-            json={"username": "lifecycle", "password": "pass", "name": "LC"},
+            json=registration_payload(username="lifecycle", password="pass", name="LC"),
         )
         assert reg.status_code == 201
 
@@ -451,11 +463,11 @@ class TestRiskDriven:
         """T-27: Two registrations with same username → one 201, one 409"""
         client.post(
             "/register",
-            json={"username": "race", "password": "pass1", "name": "R1"},
+            json=registration_payload(username="race", password="pass1", name="R1"),
         )
         response = client.post(
             "/register",
-            json={"username": "race", "password": "pass2", "name": "R2"},
+            json=registration_payload(username="race", password="pass2", name="R2"),
         )
         assert response.status_code == 409
 
@@ -478,64 +490,3 @@ class TestRiskDriven:
 
 
 # ---------------------------------------------------------------------------
-# Edge-case acceptance tests (coverage gap fillers)
-# ---------------------------------------------------------------------------
-
-class TestRegisterEdgeCases:
-    """Additional edge-case tests for FR-1: Registration."""
-
-    def test_register_extra_fields_ignored(self, client):
-        """T-EDGE-01: Extra unexpected fields in register body are ignored."""
-        response = client.post(
-            "/register",
-            json={
-                "username": "extrauser",
-                "password": "pass123",
-                "name": "Extra User",
-                "extra_field": "should be ignored",
-                "another": 42,
-            },
-        )
-        assert response.status_code == 201
-        body = response.json()
-        assert body["token_type"] == "bearer"
-
-
-class TestLoginEdgeCases:
-    """Additional edge-case tests for FR-2: Login."""
-
-    def test_login_extra_fields_ignored(self, client, registered_user):
-        """T-EDGE-02: Extra unexpected fields in login body are ignored."""
-        response = client.post(
-            "/login",
-            json={
-                "username": "testuser",
-                "password": "testpass123",
-                "extra": True,
-                "debug": "off",
-            },
-        )
-        assert response.status_code == 200
-        body = response.json()
-        assert "access_token" in body
-        assert body["token_type"] == "bearer"
-
-
-class TestGetCurrentUserEdgeCases:
-    """Additional edge-case tests for FR-3: Get current user."""
-
-    def test_me_user_deleted_after_registration(self, client, registered_user, auth_header):
-        """T-EDGE-03: /me returns 401 when user was deleted from store after registration."""
-        import store
-
-        # User exists — token is valid
-        ok = client.get("/me", headers=auth_header)
-        assert ok.status_code == 200
-
-        # Simulate deletion: clear the in-memory store
-        store.users.clear()
-
-        # Token is still structurally valid, but user no longer exists
-        response = client.get("/me", headers=auth_header)
-        assert response.status_code == 401
-        assert response.json()["detail"] == "User not found"

@@ -38,3 +38,15 @@ def registered_user(client):
 def auth_header(registered_user):
     """Return Authorization header dict for the registered user."""
     return {"Authorization": f"Bearer {registered_user['access_token']}"}
+
+
+@pytest.fixture
+def delete_user_from_store():
+    """Helper to simulate user deletion from the in-memory store."""
+
+    def _delete(username: str):
+        import store
+
+        store.users.pop(username, None)
+
+    return _delete
