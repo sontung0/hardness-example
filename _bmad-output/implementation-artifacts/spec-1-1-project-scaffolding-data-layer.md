@@ -41,3 +41,25 @@ The codebase investigation revealed a fully implemented project:
 1. `auth.py` — `SECRET_KEY = "super-secret-key-do-not-commit"` should read from env with fallback
 2. `pyproject.toml` — No `[project.scripts]` entry or `__main__` block for uvicorn
 3. `models.py` — `ErrorResponse` model defined but unused by any route/handler (low priority)
+
+### Review Findings
+
+**Code review completed:** 2026-09-07. Source-only diff (6 files, 243 lines). Review layers: Blind Hunter, Edge Case Hunter, Verification Gap Reviewer, Acceptance Auditor.
+
+#### Deferred
+
+- [x] [Review][Defer] `get_user_with_hash` leaks password_hash internally [src/store.py:17] — deferred: internal-use-only function, properly scoped to services.py. AD-6 wording too broad.
+- [x] [Review][Defer] Synchronous bcrypt blocks event loop [src/services.py] — deferred: acceptable for demo app; all routes and services synchronous by design.
+- [x] [Review][Defer] Missing `sub`-claim-absent unit test [tests/unit/test_auth.py] — deferred: pre-existing test gap, not introduced by this diff. Guard in auth.py:32-33 is correct.
+
+#### Rejected
+
+- false — JWT login case mismatch: `create_access_token` lowercases internally (auth.py:14); `authenticate_user` lowercases for store lookup (services.py:15). No functional bug.
+- false — JWT secret hardcoded fallback: `os.environ.get` with `or` handles empty strings; spec Implementation Notes mandate this behavior.
+- false — Empty username accepted: `Field(...)` has implicit `min_length=1`; Pydantic rejects empty strings with 400.
+- false — Store dict not thread-safe: CPython GIL + single-threaded uvicorn asyncio = no interleaving. Not a real issue.
+- false — user_exists + add_user non-atomic: same reasoning — single-threaded event loop, no interleaving.
+- false — main.py module-level app: standard FastAPI pattern (`uvicorn main:app`).
+- false — Validation handler first error only: explicit design choice for readable 400 responses.
+- low — Rate limiting missing: design choice for demo app, not a defect.
+- low — token_type in response body: design choice, not a defect.
