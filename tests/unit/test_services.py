@@ -3,7 +3,7 @@
 import pytest
 
 import store
-from services import authenticate_user, register_user
+from services import authenticate_user, get_current_user_profile, register_user
 
 
 @pytest.mark.unit
@@ -39,3 +39,16 @@ class TestAuthenticateUser:
     def test_authenticate_unknown_user(self):
         with pytest.raises(ValueError):
             authenticate_user("nobody", "pass")
+
+
+@pytest.mark.unit
+class TestGetCurrentUserProfile:
+    def test_profile_success(self):
+        register_user("george", "pass", "George")
+        result = get_current_user_profile("george")
+        assert result["username"] == "george"
+        assert result["name"] == "George"
+
+    def test_profile_not_found_raises(self):
+        with pytest.raises(ValueError, match="User not found"):
+            get_current_user_profile("nobody")

@@ -115,6 +115,22 @@ class TestRegister:
         assert "password_hash" not in body
         assert "password" not in body or body.get("password") is None
 
+    def test_register_extra_fields_ignored(self, client):
+        """Extra fields in request body are silently ignored"""
+        response = client.post(
+            "/register",
+            json={
+                "username": "extra",
+                "password": "pass",
+                "name": "Extra",
+                "age": 30,
+                "role": "admin",
+            },
+        )
+        assert response.status_code == 201
+        body = response.json()
+        assert "access_token" in body
+
 
 # ---------------------------------------------------------------------------
 # FR-2: User Login
@@ -178,6 +194,19 @@ class TestLogin:
         assert response.status_code == 400
         assert "detail" in response.json()
 
+    def test_login_extra_fields_ignored(self, client):
+        """Extra fields in login request are silently ignored"""
+        client.post(
+            "/register",
+            json={"username": "extra1", "password": "pass", "name": "Extra"},
+        )
+        response = client.post(
+            "/login",
+            json={"username": "extra1", "password": "pass", "extra": "ignored"},
+        )
+        assert response.status_code == 200
+        assert "access_token" in response.json()
+
 
 # ---------------------------------------------------------------------------
 # FR-3: Get Current User
@@ -225,6 +254,22 @@ class TestGetCurrentUser:
             "/me", headers={"Authorization": "Bearer not-a-jwt-token"}
         )
         assert response.status_code == 401
+
+    def test_me_user_deleted_after_registration(self, client):
+        """Token valid but user no longer in store → 401"""
+        registered = client.post(
+            "/register",
+            json={"username": "ephemeral", "password": "pass", "name": "Eph"},
+        )
+        token = registered.json()["access_token"]
+
+        # Remove user from store directly
+        import store
+        store.users.pop("ephemeral", None)
+
+        response = client.get("/me", headers={"Authorization": f"Bearer {token}"})
+        assert response.status_code == 401
+        assert response.json()["detail"] == "User not found"
 
     def test_me_tampered_payload_returns_401(self, client):
         """T-18: Tampered payload → 401"""
@@ -430,3 +475,67 @@ class TestRiskDriven:
             json={"username": "anyone"},  # missing password
         )
         assert password not in response2.text
+
+
+# ---------------------------------------------------------------------------
+# Edge-case acceptance tests (coverage gap fillers)
+# ---------------------------------------------------------------------------
+
+class TestRegisterEdgeCases:
+    """Additional edge-case tests for FR-1: Registration."""
+
+    def test_register_extra_fields_ignored(self, client):
+        """T-EDGE-01: Extra unexpected fields in register body are ignored."""
+        response = client.post(
+            "/register",
+            json={
+                "username": "extrauser",
+                "password": "pass123",
+                "name": "Extra User",
+                "extra_field": "should be ignored",
+                "another": 42,
+            },
+        )
+        assert response.status_code == 201
+        body = response.json()
+        assert body["token_type"] == "bearer"
+
+
+class TestLoginEdgeCases:
+    """Additional edge-case tests for FR-2: Login."""
+
+    def test_login_extra_fields_ignored(self, client, registered_user):
+        """T-EDGE-02: Extra unexpected fields in login body are ignored."""
+        response = client.post(
+            "/login",
+            json={
+                "username": "testuser",
+                "password": "testpass123",
+                "extra": True,
+                "debug": "off",
+            },
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert "access_token" in body
+        assert body["token_type"] == "bearer"
+
+
+class TestGetCurrentUserEdgeCases:
+    """Additional edge-case tests for FR-3: Get current user."""
+
+    def test_me_user_deleted_after_registration(self, client, registered_user, auth_header):
+        """T-EDGE-03: /me returns 401 when user was deleted from store after registration."""
+        import store
+
+        # User exists — token is valid
+        ok = client.get("/me", headers=auth_header)
+        assert ok.status_code == 200
+
+        # Simulate deletion: clear the in-memory store
+        store.users.clear()
+
+        # Token is still structurally valid, but user no longer exists
+        response = client.get("/me", headers=auth_header)
+        assert response.status_code == 401
+        assert response.json()["detail"] == "User not found"
