@@ -2,7 +2,7 @@
 title: 'Story 1.1 — Project Scaffolding & Data Layer'
 type: 'feature'
 created: '2026-09-07'
-status: 'ready-for-dev'
+status: 'done'
 route: 'oneshot'
 review_loop_iteration: 0
 context: []
