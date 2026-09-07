@@ -37,9 +37,4 @@ def main():
 if __name__ == "__main__":
     main()
 
-if __name__ == "__main__":
-    main()
-    return app
-
-
 app = create_app()
