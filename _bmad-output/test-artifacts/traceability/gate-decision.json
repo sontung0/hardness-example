@@ -1,0 +1,22 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-09-08T00:00:00Z",
+  "repo": "bmad",
+  "target": {
+    "type": "epic",
+    "id": "epic-1",
+    "label": "Epic 1 — Auth API"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "FAIL",
+  "rationale": "Overall coverage is 73% (minimum 80%). P1 coverage is 0% (minimum 80%) — all 4 P1 items are architectural requirements (AR-1: Swagger UI presence, AR-2: docs content, AR-3: API completeness, AR-5: endpoint metadata) verified manually but lacking automated test evidence. P0 coverage is 100%. No critical gaps found. All 15 requirements are covered (fully or partially) with 0 gaps remaining.",
+  "p0_status": "MET",
+  "p1_status": "NOT_MET",
+  "overall_status": "NOT_MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/traceability-matrix.md",
+    "trace_report_url": ""
+  }
+}
