@@ -17,8 +17,10 @@ build/
 # Testing
 .pytest_cache/
 .coverage
+coverage.xml
 coverage.json
 htmlcov/
+reports/
 
 # User-specific config
 config.user.toml
