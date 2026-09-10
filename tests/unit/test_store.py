@@ -2,7 +2,6 @@
 
 import pytest
 
-import store
 from store import add_user, get_user, get_user_with_hash, user_exists
 
 

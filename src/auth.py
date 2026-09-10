@@ -4,7 +4,7 @@ import os
 import time
 
 import jwt
-from fastapi import Depends, HTTPException, Header
+from fastapi import Header, HTTPException
 
 SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "super-secret-key-do-not-commit")
 ALGORITHM = "HS256"

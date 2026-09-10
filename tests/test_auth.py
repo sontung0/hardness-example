@@ -13,17 +13,13 @@ import time
 
 import jwt
 import pytest
-from fastapi.testclient import TestClient
 
 from tests.support.constants import (
-    ERR_NOT_AUTHENTICATED,
     ERR_USER_NOT_FOUND,
     TEST_NAME,
-    TEST_PASSWORD,
     TEST_USERNAME,
 )
 from tests.support.helpers.factories import registration_payload
-
 
 # ---------------------------------------------------------------------------
 # FR-1: User Registration
@@ -111,7 +107,7 @@ class TestRegister:
         assert stored is not None
         assert stored["password_hash"] != "mypassword"
         assert bcrypt.checkpw(
-            "mypassword".encode("utf-8"),
+            b"mypassword",
             stored["password_hash"].encode("utf-8"),
         )
 
