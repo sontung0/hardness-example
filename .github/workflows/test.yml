@@ -110,7 +110,7 @@ jobs:
             ${{ runner.os }}-uv-
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --extra test
 
       - name: Run tests (shard ${{ matrix.shard }}/3)
         run: |
@@ -170,7 +170,7 @@ jobs:
             ${{ runner.os }}-uv-
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --extra test
 
       - name: Run burn-in loop (10 iterations)
         run: |
