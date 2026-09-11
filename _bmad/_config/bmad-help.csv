@@ -1,4 +1,6 @@
 module,skill,display-name,menu-code,description,action,args,phase,preceded-by,followed-by,required,output-location,outputs
+BMAD Loop Skills,bmad-loop-setup,Setup Loop Module,SA,Install or update BMAD Loop module config and help entries.,configure,{-H: headless mode},anytime,,,false,{project-root}/_bmad,config.yaml entries
+BMAD Loop Skills,bmad-loop-sweep,Sweep Triage,ST,Read-only triage of the deferred-work ledger into a machine-readable partition. Automation-only; bmad-loop sweep invokes it.,triage,{--feedback path},anytime,,,false,implementation_artifacts,result.json triage plan
 BMad Method,_meta,,,,,,,,,false,https://docs.bmad-method.org/,
 BMad Method,bmad-prd,Create Edit and Review PRD,PRD,"Create a new PRD through guided discovery, update an existing one when plans change, or validate a finished PRD against a checklist with an HTML findings report.",,,2-planning,bmad-product-brief,,true,planning_artifacts,prd
 BMad Method,bmad-ux,Create UX,CU,Capture UX decisions into design and experience documents. Strongly recommended when a UI is a major part of the project.,,,2-planning,bmad-prd,,false,planning_artifacts,ux design
