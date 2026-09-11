@@ -2,6 +2,7 @@
 stepsCompleted: ["step-01-validate-prerequisites", "step-02-design-epics", "step-03-create-stories"]
 inputDocuments:
   - prds/prd-bmad-2026-09-06/prd.md
+  - prds/prd-bmad-2026-09-11/prd.md
   - architecture/architecture-bmad-2026-09-06/ARCHITECTURE-SPINE.md
 ---
 
@@ -18,6 +19,10 @@ This document provides the complete epic and story breakdown for bmad, decomposi
 - **FR-1:** Register a new user — POST `/register` with username, password, and name. Validate input, hash password, store user, return JWT. Returns HTTP 201 on success, 409 on duplicate username, 400 on missing fields. Password is never stored as plaintext.
 - **FR-2:** Login with valid credentials — POST `/login` with username and password. Validate against in-memory store, return JWT. Returns HTTP 200 on success, 401 on wrong credentials, 400 on missing fields.
 - **FR-3:** Retrieve current user profile — GET `/me` with valid JWT in Authorization header. Return username and name (never password). Returns HTTP 200 on success, 401 for missing, expired, or invalid token.
+- **FR-4:** Change password with valid current password — POST `/change-password` with valid JWT, current password, and new password. Validate current password, hash and store new password, return HTTP 200. Existing JWT remains valid after change.
+- **FR-5:** Reject change with wrong current password — POST `/change-password` with valid JWT but wrong current password → HTTP 401 Unauthorized. Response does not reveal which field was wrong.
+- **FR-6:** Reject change with weak new password — New password shorter than 8 characters → HTTP 400 Bad Request with message indicating minimum length.
+- **FR-7:** Reject change without authentication — POST `/change-password` without valid JWT → HTTP 401 Unauthorized.
 
 ### NonFunctional Requirements
 
@@ -27,6 +32,9 @@ This document provides the complete epic and story breakdown for bmad, decomposi
 - **NFR-4:** Stateless auth — no session cookies, no server-side session store. JWT is sole authentication mechanism. No refresh tokens.
 - **NFR-5:** Consistent error shape — all errors return `{"detail": str}`. Status codes: 400 bad input, 401 unauthenticated, 409 conflict. Custom handler overrides FastAPI's default 422.
 - **NFR-6:** Password hash exclusion boundary — `password_hash` never exposed in any response or store return value. Store returns only username + name.
+- **NFR-7:** Password change gate — Current password must be verified against stored hash before accepting new one. New password minimum 8 characters; no complexity rules. Existing JWT remains valid after change.
+- **NFR-8:** Password change error semantics — Wrong current password returns HTTP 401 with same generic `{"detail": "Invalid credentials"}` message used by login. New password too short returns HTTP 400 with `{"detail": "Password must be at least 8 characters"}`.
+- **NFR-9:** Store mutation for password change — `store.py` exposes `update_password(username, new_hash)` — a dumb writer that overwrites the `password_hash` field. All bcrypt work stays in `services.py`.
 
 ### Additional Requirements
 
@@ -36,6 +44,7 @@ This document provides the complete epic and story breakdown for bmad, decomposi
 - **AR-4:** Auth dependency contract — `auth.py` is sole JWT decoder. Exposes FastAPI `Depends` returning `username: str` to route handlers. Services receive only username, never raw tokens.
 - **AR-5:** Store lifecycle — module-level dict in `store.py`. Services import directly. No dependency injection of the store.
 - **AR-6:** Username normalization — always lowercased on write; all lookups use lowercased form.
+- **AR-7:** Change password request/response — Request: `{"current_password": str, "new_password": str}`. Response: `{"message": "Password changed successfully"}`.
 
 ### UX Design Requirements
 
@@ -48,18 +57,26 @@ N/A — No UX design document exists for this project.
 | FR-1 | Epic 1 | Story 1.2 — User registration |
 | FR-2 | Epic 1 | Story 1.3 — User login |
 | FR-3 | Epic 1 | Story 1.4 — Get current user |
+| FR-4 | Epic 2 | Story 2.1 — Change password |
+| FR-5 | Epic 2 | Story 2.1 — Change password |
+| FR-6 | Epic 2 | Story 2.1 — Change password |
+| FR-7 | Epic 2 | Story 2.1 — Change password |
 | NFR-1 | Epic 1 | Story 1.1 — Project scaffolding & data layer |
 | NFR-2 | Epic 1 | Stories 1.2, 1.3 — bcrypt hashing |
 | NFR-3 | Epic 1 | Story 1.4 — JWT validation |
 | NFR-4 | Epic 1 | Story 1.4 — Stateless auth |
 | NFR-5 | Epic 1 | Story 1.4 — Consistent error shape |
 | NFR-6 | Epic 1 | Story 1.2 — Password hash exclusion |
+| NFR-7 | Epic 2 | Story 2.1 — Password change gate |
+| NFR-8 | Epic 2 | Story 2.1 — Password change error semantics |
+| NFR-9 | Epic 2 | Story 2.1 — Store mutation for password change |
 | AR-1 | Epic 1 | Story 1.1 — Layered architecture |
 | AR-2 | Epic 1 | Story 1.1 — Structural seed |
 | AR-3 | Epic 1 | Story 1.1 — Tech stack setup |
 | AR-4 | Epic 1 | Story 1.4 — Auth dependency contract |
 | AR-5 | Epic 1 | Story 1.1 — Store lifecycle |
 | AR-6 | Epic 1 | Story 1.1 — Username normalization |
+| AR-7 | Epic 2 | Story 2.1 — Change password request/response |
 
 ## Epic List
 
@@ -67,17 +84,17 @@ N/A — No UX design document exists for this project.
 
 Users can register an account, log in, and retrieve their own profile — a complete, stateless auth system with JWT.
 
-**Story 1.1: Project scaffolding & data layer**
-Sets up the project structure, in-memory store, Pydantic models, and app factory. Establishes the layered architecture (Routes → Services → Store), tech stack (FastAPI, bcrypt, PyJWT), and all foundational patterns.
+**FRs covered:** FR-1, FR-2, FR-3
+**NFRs covered:** NFR-1, NFR-2, NFR-3, NFR-4, NFR-5, NFR-6
+**ARs covered:** AR-1, AR-2, AR-3, AR-4, AR-5, AR-6
 
-**Story 1.2: User registration**
-Implements POST `/register` — accepts username, password, and name, validates input, hashes the password with bcrypt, stores the user, and returns a JWT. Handles duplicate username (409) and missing fields (400).
+### Epic 2: Password Management
 
-**Story 1.3: User login**
-Implements POST `/login` — accepts username and password, validates credentials against the in-memory store, and returns a JWT. Handles wrong credentials (401) and missing fields (400).
+Users can change their password after authentication — validating current credentials and enforcing minimum password requirements.
 
-**Story 1.4: Get current user**
-Implements GET `/me` — extracts username from JWT via auth dependency, returns the user's profile (username and name, never password). Handles missing/invalid/expired tokens (401). Establishes consistent error shape (`{"detail": str}`) across all endpoints.
+**FRs covered:** FR-4, FR-5, FR-6, FR-7
+**NFRs covered:** NFR-7, NFR-8, NFR-9
+**ARs covered:** AR-7
 
 ## Epic 1: User Authentication API
 
@@ -165,4 +182,37 @@ So that I can confirm my identity and access my user info after authentication.
 
 **Given** a request with an expired or invalid JWT
 **When** the client sends `GET /me` with a bad token
+**Then** the response is HTTP 401 with body `{"detail": "..."}`
+
+## Epic 2: Password Management
+
+Users can change their password after authentication — validating current credentials and enforcing minimum password requirements.
+
+### Story 2.1: Change password
+
+As a developer,
+I want to change my password via POST `/change-password`,
+So that I can update my credentials while maintaining account security.
+
+**Acceptance Criteria:**
+
+**Given** a user has a valid JWT and knows their current password
+**When** the client sends `POST /change-password` with `Authorization: Bearer <token>` and body `{"current_password": "...", "new_password": "..."}`
+**Then** the response is HTTP 200 with body `{"message": "Password changed successfully"}`
+**And** the new password is hashed with bcrypt and stored (replacing the old hash)
+**And** the old password can no longer be used to authenticate
+**And** the existing JWT remains valid (no token rotation)
+
+**Given** a user provides the wrong current password
+**When** the client sends `POST /change-password` with an incorrect current password
+**Then** the response is HTTP 401 with body `{"detail": "Invalid credentials"}`
+**And** the stored password is NOT changed
+
+**Given** a user provides a new password shorter than 8 characters
+**When** the client sends `POST /change-password` with a weak new password
+**Then** the response is HTTP 400 with body `{"detail": "Password must be at least 8 characters"}`
+**And** the stored password is NOT changed
+
+**Given** a request without a valid JWT
+**When** the client sends `POST /change-password` without an Authorization header or with an invalid/expired token
 **Then** the response is HTTP 401 with body `{"detail": "..."}`
