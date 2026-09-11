@@ -1,0 +1,22 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-09-08T00:00:00Z",
+  "repo": "bmad",
+  "target": {
+    "type": "epic",
+    "id": "epic-1",
+    "label": "Epic 1 — Auth API"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "P0 coverage is 100% (8/8), P1 coverage is 100% (4/4), and overall coverage is 93.3% (14/15). All functional, non-functional, and architectural requirements have automated test coverage. 82 tests pass across 5 test files. All 4 originally identified gaps resolved. Two acknowledged non-blocking gaps remain: AR-3 (tech stack version pinning, verified by pyproject.toml) and performance/load testing (not in scope).",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/traceability-matrix.md",
+    "trace_report_url": ""
+  }
+}
