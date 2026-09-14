@@ -13,11 +13,6 @@
   ],
   "customizations": {
     "vscode": {
-      "extensions": [
-        "anthropic.claude-code",
-        "ms-python.python",
-        "charliermarsh.ruff"
-      ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",
         "python.defaultInterpreterPath": "/workspace/.venv/bin/python"
