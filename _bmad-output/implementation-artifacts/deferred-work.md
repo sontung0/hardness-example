@@ -51,7 +51,9 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review (2026-09-06)"), 2026-09-15
 location: _bmad-output/planning-artifacts/epics.md
 reason: Pre-existing planning doc issue. The summary block and the detailed section both define "Epic 1: User Authentication API" without clear delineation between the two.
-status: open
+status: done 2026-09-15
+resolution: resolved by sweep bundle dw-fix-epics-duplicate-heading
+resolution-undo: 87f8d57e2abd898f8f469cf8444f463ee6bf3951d4ccc85feb4bb1c3baa1122b 2026-09-15 7374617475733a206f70656e
 
 ### DW-7: Test design references non-existent AD-6/7/8
 origin: migrated from legacy ledger ("Deferred from: code review (2026-09-06)"), 2026-09-15
@@ -78,3 +80,11 @@ location: src/auth.py:32-33
 reason: Pre-existing test gap. The guard in auth.py:32-33 that rejects a token with no `sub` claim is correct, but no unit test exercises that path, so there is no regression risk currently, only missing coverage.
 status: done 2026-09-15
 resolution: already resolved: tests/unit/test_auth.py:152-159 (test_missing_sub_claim_raises_401) exercises a valid JWT with no 'sub' claim and asserts the 401 'Invalid token' response from auth.py:38-40.
+
+### DW-11: The epic description sentence is duplicated verbatim between the Epic List table's Summary column and the detailed Epic section paragraph below it.
+origin: spec-deferred be510d4e161a
+location: _bmad-output/planning-artifacts/epics.md (Epic List table Summary column vs. Epic N section intro paragraph)
+source_spec: `spec-dw-6-fix-epics-duplicate-heading.md`
+severity: low
+reason: Pre-existing duplication, not introduced by this change: the same sentence appeared in both the old summary heading block and the detailed section before this diff, and still appears in both places (now the table cell and the detail paragraph) after it. DW-6 scoped only the duplicate *headings*, not duplicate *prose*, so fixing this is out of this story's scope; future edits to an epic's description risk drifting out of sync between the two locations.
+status: open
