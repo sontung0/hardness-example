@@ -80,21 +80,10 @@ N/A — No UX design document exists for this project.
 
 ## Epic List
 
-### Epic 1: User Authentication API
-
-Users can register an account, log in, and retrieve their own profile — a complete, stateless auth system with JWT.
-
-**FRs covered:** FR-1, FR-2, FR-3
-**NFRs covered:** NFR-1, NFR-2, NFR-3, NFR-4, NFR-5, NFR-6
-**ARs covered:** AR-1, AR-2, AR-3, AR-4, AR-5, AR-6
-
-### Epic 2: Password Management
-
-Users can change their password after authentication — validating current credentials and enforcing minimum password requirements.
-
-**FRs covered:** FR-4, FR-5, FR-6, FR-7
-**NFRs covered:** NFR-7, NFR-8, NFR-9
-**ARs covered:** AR-7
+| Epic | Title | Summary | FRs | NFRs | ARs |
+|------|-------|---------|-----|------|-----|
+| Epic 1 | User Authentication API | Users can register an account, log in, and retrieve their own profile — a complete, stateless auth system with JWT. | FR-1, FR-2, FR-3 | NFR-1, NFR-2, NFR-3, NFR-4, NFR-5, NFR-6 | AR-1, AR-2, AR-3, AR-4, AR-5, AR-6 |
+| Epic 2 | Password Management | Users can change their password after authentication — validating current credentials and enforcing minimum password requirements. | FR-4, FR-5, FR-6, FR-7 | NFR-7, NFR-8, NFR-9 | AR-7 |
 
 ## Epic 1: User Authentication API
 
