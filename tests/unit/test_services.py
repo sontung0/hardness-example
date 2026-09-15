@@ -23,6 +23,16 @@ class TestRegisterUser:
         with pytest.raises(ValueError, match="already exists"):
             register_user("charlie", "pass2", "Charlie 2")
 
+    def test_register_oversized_password_raises_value_error(self):
+        with pytest.raises(ValueError, match="Password must be at most 72 bytes"):
+            register_user("oversized", "a" * 73, "Oversized")
+        assert not store.user_exists("oversized")
+
+    def test_register_boundary_72_byte_password_succeeds(self):
+        result = register_user("boundary", "a" * 72, "Boundary")
+        assert result["username"] == "boundary"
+        assert store.user_exists("boundary")
+
 
 @pytest.mark.unit
 class TestAuthenticateUser:
@@ -39,6 +49,16 @@ class TestAuthenticateUser:
     def test_authenticate_unknown_user(self):
         with pytest.raises(ValueError):
             authenticate_user("nobody", "pass")
+
+    def test_authenticate_oversized_password_raises_value_error(self):
+        register_user("frank", "mypassword", "Frank")
+        with pytest.raises(ValueError, match="Password must be at most 72 bytes"):
+            authenticate_user("frank", "a" * 73)
+
+    def test_authenticate_boundary_72_byte_password(self):
+        register_user("gina", "a" * 72, "Gina")
+        result = authenticate_user("gina", "a" * 72)
+        assert result["username"] == "gina"
 
 
 @pytest.mark.unit

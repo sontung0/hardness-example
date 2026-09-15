@@ -67,6 +67,15 @@ class TestRegister:
         assert response.status_code == 400
         assert "detail" in response.json()
 
+    def test_register_oversized_password_returns_400(self, client):
+        """Password > 72 bytes → 400"""
+        response = client.post(
+            "/register",
+            json=registration_payload(username="alice", password="a" * 73, name="Alice"),
+        )
+        assert response.status_code == 400
+        assert "72 bytes" in response.json()["detail"]
+
     def test_register_duplicate_username_returns_409(self, client):
         """T-05: Duplicate username → 409"""
         client.post(

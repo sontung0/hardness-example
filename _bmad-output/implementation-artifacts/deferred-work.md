@@ -6,7 +6,9 @@ location: src/services.py (change_password, register_user, authenticate_user)
 source_spec: `spec-2-1-change-password.md`
 severity: medium
 reason: Confirmed empirically: bcrypt.hashpw/checkpw both raise "password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])" for a 100-byte password. Applies to both current_password (bcrypt.checkpw) and new_password (bcrypt.hashpw) in services.change_password, but the identical unguarded pattern already exists in register_user/authenticate_user since Epic 1 — pre-existing, cross-cutting, not introduced by this story.
-status: open
+status: done 2026-09-15
+resolution: resolved by sweep bundle dw-bcrypt-length-guard
+resolution-undo: 7f96224741a927a58c2500a3c567e9fcdcaeb2844d242310b32a35b37a35a4fc 2026-09-15 7374617475733a206f70656e
 
 ### DW-2: change_password's read-verify-write sequence on the shared in-memory store dict is non-atomic under concurrent requests for the same username.
 origin: spec-deferred 92e885e07f15

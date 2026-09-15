@@ -58,6 +58,22 @@ class TestChangePasswordEndpoint:
         )
         assert login_response.status_code == 200
 
+    def test_oversized_new_password_returns_400(self, client, registered_user, auth_header):
+        """New password > 72 bytes → HTTP 400."""
+        response = client.post(
+            "/change-password",
+            json={"current_password": "testpass123", "new_password": "a" * 73},
+            headers=auth_header,
+        )
+        assert response.status_code == 400
+        assert "detail" in response.json()
+        assert "72 bytes" in response.json()["detail"]
+
+        login_response = client.post(
+            "/login", json={"username": "testuser", "password": "testpass123"}
+        )
+        assert login_response.status_code == 200
+
     def test_boundary_new_password_exactly_8_chars_returns_200(self, client, registered_user, auth_header):
         """T-39: New password exactly 8 chars → HTTP 200 (boundary)."""
         response = client.post(
