@@ -22,7 +22,8 @@ location: _bmad-output/implementation-artifacts/deferred-work.md
 source_spec: `spec-2-1-change-password.md`
 severity: low
 reason: Confirmed by reading deferred-work.md: DW-1/DW-2 (source_spec spec-2-1-change-password.md) sit directly under "## Deferred from: code review of spec-1-1-project-scaffolding-data-layer (2026-09-07)", and use a structured origin/location/source_spec/severity/reason/status schema while every other entry in the file is an unstructured bullet. deferred-work.md is orchestrator-owned per this run's instructions (never modify existing ledger entries), so build-auto cannot correct the misfiling or format itself.
-status: open
+status: done 2026-09-15
+resolution: already resolved: deferred-work.md now uses a uniform '### DW-<n>:' schema throughout with no legacy '## Deferred from:' headings, per commit 397d7c6 (chore(sweep): migrate legacy deferred-work entries to DW format); DW-1/DW-2 sit consistently formatted alongside every other entry.
 
 ### DW-4: sprint-status.yaml still shows epic-2 as backlog and an unbumped last_updated even though 2-1-change-password (epic-2's only story) is done.
 origin: spec-deferred 187fd30f7b0a
@@ -50,7 +51,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review (2026-09-06)"), 2026-09-15
 location: _bmad-output/test-artifacts/test-design/test-design-architecture.md
 reason: Pre-existing planning doc issue. Test design documents trace to architecture decisions (AD-6/7/8) that were never added to the architecture spine, breaking traceability.
-status: open
+status: done 2026-09-15
+resolution: already resolved: ARCHITECTURE-SPINE.md:114,120,126 now define AD-6, AD-7, and AD-8; test-design-architecture.md:188 is the only AD-6/7/8 reference in that file (no AD-7/AD-8 references exist there to be dangling) and it correctly resolves to the now-existing AD-6.
 
 ### DW-8: `get_user_with_hash` leaks password_hash internally
 origin: migrated from legacy ledger ("Deferred from: code review of spec-1-1-project-scaffolding-data-layer (2026-09-07)"), 2026-09-15
@@ -68,4 +70,5 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-1-1-project-scaffolding-data-layer (2026-09-07)"), 2026-09-15
 location: src/auth.py:32-33
 reason: Pre-existing test gap. The guard in auth.py:32-33 that rejects a token with no `sub` claim is correct, but no unit test exercises that path, so there is no regression risk currently, only missing coverage.
-status: open
+status: done 2026-09-15
+resolution: already resolved: tests/unit/test_auth.py:152-159 (test_missing_sub_claim_raises_401) exercises a valid JWT with no 'sub' claim and asserts the 401 'Invalid token' response from auth.py:38-40.
