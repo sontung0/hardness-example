@@ -31,7 +31,9 @@ location: _bmad-output/implementation-artifacts/sprint-status.yaml
 source_spec: `spec-2-1-change-password.md`
 severity: low
 reason: Confirmed by reading sprint-status.yaml: development_status has epic-2: backlog alongside 2-1-change-password: done, and last_updated is still 09-11-2026 14:30. sprint-status.yaml is explicitly orchestrator-owned per this run's instructions (never write it), so build-auto cannot correct this itself.
-status: open
+status: done 2026-09-15
+resolution: closed by human decision: Update sprint-status.yaml's epic-2 status to done to match its completed story and retrospective; a direct data edit outside code-bundle scope.
+decision: 2026-09-15 Flip epic-2 to done — Update sprint-status.yaml's epic-2 status to done to match its completed story and retrospective; a direct data edit outside code-bundle scope.
 
 ### DW-5: tests/README.md documents only test_auth.py (T-01 to T-28) and still lists integration/ as a placeholder, undocumented for the T-29 to T-49 tests this story activated.
 origin: spec-deferred 91b58c4ad64e
