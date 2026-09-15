@@ -1,6 +1,8 @@
 """Unit tests for services.change_password."""
 
 import importlib
+import threading
+
 import pytest
 
 pytestmark = [
@@ -87,3 +89,54 @@ class TestChangePassword:
         result = svc.change_password("harry", "a" * 72, "b" * 72)
         assert result is not None
         assert "message" in result
+
+    def test_concurrent_change_password_same_user_no_lost_update(self):
+        """Two threads racing change_password for the same user, both presenting the
+        same (originally valid) current password with different new passwords, must
+        serialize cleanly: exactly one call succeeds and stores its new hash, and any
+        other call fails with a clean "Invalid credentials" (because the password has
+        legitimately moved on under it) rather than any interleaved/corrupted write.
+        The final stored hash matches exactly the winner's new password -- never a
+        partial or garbled hash, and never both new passwords 'winning' at once."""
+        import bcrypt
+
+        svc = importlib.import_module("services")
+        store_mod = importlib.import_module("store")
+        svc.register_user("ivan", "current123", "Ivan")
+
+        new_password_a = "newpassA1"
+        new_password_b = "newpassB2"
+        results: list[dict] = []
+        errors: list[Exception] = []
+        barrier = threading.Barrier(2)
+
+        def worker(new_password: str):
+            barrier.wait()
+            try:
+                results.append(svc.change_password("ivan", "current123", new_password))
+            except ValueError as exc:
+                errors.append(exc)
+
+        threads = [
+            threading.Thread(target=worker, args=(new_password_a,)),
+            threading.Thread(target=worker, args=(new_password_b,)),
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        # Exactly one call wins the race (check-then-write is atomic: no lost update).
+        assert len(results) == 1
+        # Any loser fails cleanly on re-verification against the now-current hash --
+        # never a corrupted/garbled intermediate state.
+        for err in errors:
+            assert "Invalid credentials" in str(err)
+        assert len(results) + len(errors) == 2
+
+        stored = store_mod.get_user_with_hash("ivan")
+        final_hash = stored["password_hash"].encode("utf-8")
+        matches_a = bcrypt.checkpw(new_password_a.encode("utf-8"), final_hash)
+        matches_b = bcrypt.checkpw(new_password_b.encode("utf-8"), final_hash)
+        # Final hash matches exactly one of the two candidate new passwords.
+        assert matches_a != matches_b

@@ -1,5 +1,7 @@
 """Unit tests for business logic (services layer)."""
 
+import threading
+
 import pytest
 
 import store
@@ -32,6 +34,32 @@ class TestRegisterUser:
         result = register_user("boundary", "a" * 72, "Boundary")
         assert result["username"] == "boundary"
         assert store.user_exists("boundary")
+
+    def test_concurrent_register_same_username_only_one_succeeds(self):
+        """Two threads racing register_user for the same new username must not
+        both succeed (overwrite) and must not both fail: exactly one wins."""
+        username = "concurrent_register_user"
+        results: list[dict] = []
+        errors: list[Exception] = []
+        barrier = threading.Barrier(2)
+
+        def worker():
+            barrier.wait()
+            try:
+                results.append(register_user(username, "password123", "Concurrent"))
+            except ValueError as exc:
+                errors.append(exc)
+
+        threads = [threading.Thread(target=worker) for _ in range(2)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert len(results) == 1
+        assert len(errors) == 1
+        assert "already exists" in str(errors[0])
+        assert store.user_exists(username)
 
 
 @pytest.mark.unit
