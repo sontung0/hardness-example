@@ -45,7 +45,9 @@ location: tests/README.md
 source_spec: `spec-2-1-change-password.md`
 severity: low
 reason: Confirmed by reading tests/README.md. The file is absent from this story's diff entirely (not in `git diff --stat` output), and it already omitted Epic 1's unit/test_store.py and unit/test_services.py before this story, so the staleness pre-dates this change and is not introduced by it.
-status: open
+status: done 2026-09-15
+resolution: resolved by sweep bundle dw-document-new-test-files-in-readme
+resolution-undo: 9339eecb1e6cccd3b674a4d0509bf73d4fd5660ad8292bef262b883fd993c326 2026-09-15 7374617475733a206f70656e
 
 ### DW-6: Epic 1 heading duplicated in epics.md
 origin: migrated from legacy ledger ("Deferred from: code review (2026-09-06)"), 2026-09-15
@@ -87,4 +89,12 @@ location: _bmad-output/planning-artifacts/epics.md (Epic List table Summary colu
 source_spec: `spec-dw-6-fix-epics-duplicate-heading.md`
 severity: low
 reason: Pre-existing duplication, not introduced by this change: the same sentence appeared in both the old summary heading block and the detailed section before this diff, and still appears in both places (now the table cell and the detail paragraph) after it. DW-6 scoped only the duplicate *headings*, not duplicate *prose*, so fixing this is out of this story's scope; future edits to an epic's description risk drifting out of sync between the two locations.
+status: open
+
+### DW-12: tests/README.md's Architecture tree and Test IDs section still omit tests/unit/test_auth.py (unit tests for JWT creation/decoding/auth dependency) and tests/unit/test_structure.py (AR-1/AR-2/AR-5
+origin: spec-deferred 8daf9842b47b
+location: tests/README.md (Architecture tree, Test IDs section, and Best Practices → Markers bullet)
+source_spec: `spec-dw-5-document-new-test-files-in-readme.md`
+severity: low
+reason: Verified both files exist on disk and are absent from the README's Architecture tree and Test IDs section, both before and after this diff. DW-5's ledger entry and bundle intent name five specific files to add (the three T-29-T-49 files plus Epic 1's test_store.py and test_services.py); neither test_auth.py's unit-test twin nor test_structure.py is named, so this pre-existing gap is not within this story's named scope, though it is real under the bundle intent's broader "accurately reflects the current tests/ directory structure" phrasing. The `structural` marker (pyproject.toml line 33) predates this change and is likewise outside the Architecture tree/Test IDs scope this ledger entry names.
 status: open
