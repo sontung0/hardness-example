@@ -197,29 +197,32 @@ class TestChangePasswordEndpoint:
 
     # ── Input validation ────────────────────────────────────────────
 
-    def test_empty_body_returns_400_or_422(self, client, registered_user, auth_header):
-        """T-47: Empty JSON body → HTTP 400 or 422."""
+    def test_empty_body_returns_400(self, client, registered_user, auth_header):
+        """T-47: Empty JSON body → HTTP 400 (via custom validation handler)."""
         response = client.post(
             "/change-password",
             json={},
             headers=auth_header,
         )
-        assert response.status_code in (400, 422)
+        assert response.status_code == 400
+        assert "detail" in response.json()
 
-    def test_missing_current_password_field_returns_400_or_422(self, client, registered_user, auth_header):
-        """T-48: Missing current_password → HTTP 400 or 422."""
+    def test_missing_current_password_field_returns_400(self, client, registered_user, auth_header):
+        """T-48: Missing current_password → HTTP 400 (via custom validation handler)."""
         response = client.post(
             "/change-password",
             json={"new_password": "newpass123"},
             headers=auth_header,
         )
-        assert response.status_code in (400, 422)
+        assert response.status_code == 400
+        assert "detail" in response.json()
 
-    def test_missing_new_password_field_returns_400_or_422(self, client, registered_user, auth_header):
-        """T-49: Missing new_password → HTTP 400 or 422."""
+    def test_missing_new_password_field_returns_400(self, client, registered_user, auth_header):
+        """T-49: Missing new_password → HTTP 400 (via custom validation handler)."""
         response = client.post(
             "/change-password",
             json={"current_password": "testpass123"},
             headers=auth_header,
         )
-        assert response.status_code in (400, 422)
+        assert response.status_code == 400
+        assert "detail" in response.json()
