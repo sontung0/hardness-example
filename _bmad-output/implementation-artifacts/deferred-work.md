@@ -16,7 +16,9 @@ location: src/services.py:change_password, src/services.py:register_user
 source_spec: `spec-2-1-change-password.md`
 severity: medium
 reason: FastAPI runs sync route handlers in a threadpool, so two concurrent /change-password (or /register) calls for the same user can interleave between the check and the write. The identical non-atomic check-then-write pattern already exists in register_user (user_exists → add_user) — a pre-existing architectural characteristic of the module-level dict store, not introduced by this story.
-status: open
+status: done 2026-09-15
+resolution: resolved by sweep bundle dw-atomic-password-store-writes
+resolution-undo: a71ec1804daaf3e8046b90f851145e7064d4c46d2967926a03ca47b870ff1c94 2026-09-15 7374617475733a206f70656e
 
 ### DW-3: DW-1 and DW-2 in deferred-work.md are filed under the unrelated 2026-09-07 spec-1-1 review heading instead of a new dated heading for this story's review, and use a different entry schema than the
 origin: spec-deferred b05e3012e9cb
