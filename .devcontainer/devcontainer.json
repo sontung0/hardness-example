@@ -30,7 +30,7 @@
   },
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",
-  "postCreateCommand": "uv sync --all-extras",
+  "postCreateCommand": "uv sync --all-extras && uv tool install 'bmad-loop[tui] @ git+https://github.com/bmad-code-org/bmad-loop.git'",
   // "postStartCommand": "sudo /usr/local/bin/init-firewall.sh",
   "waitFor": "postStartCommand"
 }

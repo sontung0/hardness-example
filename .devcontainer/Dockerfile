@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   curl \
   ca-certificates \
   man-db \
+  tmux \
   unzip \
   gnupg2 \
   gh \
