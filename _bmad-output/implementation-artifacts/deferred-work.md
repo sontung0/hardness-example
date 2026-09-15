@@ -1,16 +1,5 @@
 # Deferred Work
 
-## Deferred from: code review (2026-09-06)
-
-- **Epic 1 heading duplicated in epics.md** — Pre-existing planning doc issue. Summary block and detailed section both define "Epic 1: User Authentication API" without clear delineation.
-- **Test design references non-existent AD-6/7/8** — Pre-existing planning doc issue. Test design documents trace to architecture decisions that were never added to the spine, breaking traceability.
-
-## Deferred from: code review of spec-1-1-project-scaffolding-data-layer (2026-09-07)
-
-- **`get_user_with_hash` leaks password_hash internally** — Internal-use-only function, properly scoped to services.py. AD-6 wording too broad for this design.
-- **Synchronous bcrypt blocks event loop** — Acceptable for demo app; all routes and services synchronous by design.
-- **Missing `sub`-claim-absent unit test** — Pre-existing test gap. Guard in auth.py:32-33 is correct; no regression risk.
-
 ### DW-1: bcrypt raises ValueError for any password over 72 bytes, and the generic ValueError→400 mapping in routes.py leaks that internal bcrypt message to the client instead of a clean error.
 origin: spec-deferred 1f31a4e6614a
 location: src/services.py (change_password, register_user, authenticate_user)
@@ -49,4 +38,34 @@ location: tests/README.md
 source_spec: `spec-2-1-change-password.md`
 severity: low
 reason: Confirmed by reading tests/README.md. The file is absent from this story's diff entirely (not in `git diff --stat` output), and it already omitted Epic 1's unit/test_store.py and unit/test_services.py before this story, so the staleness pre-dates this change and is not introduced by it.
+status: open
+
+### DW-6: Epic 1 heading duplicated in epics.md
+origin: migrated from legacy ledger ("Deferred from: code review (2026-09-06)"), 2026-09-15
+location: _bmad-output/planning-artifacts/epics.md
+reason: Pre-existing planning doc issue. The summary block and the detailed section both define "Epic 1: User Authentication API" without clear delineation between the two.
+status: open
+
+### DW-7: Test design references non-existent AD-6/7/8
+origin: migrated from legacy ledger ("Deferred from: code review (2026-09-06)"), 2026-09-15
+location: _bmad-output/test-artifacts/test-design/test-design-architecture.md
+reason: Pre-existing planning doc issue. Test design documents trace to architecture decisions (AD-6/7/8) that were never added to the architecture spine, breaking traceability.
+status: open
+
+### DW-8: `get_user_with_hash` leaks password_hash internally
+origin: migrated from legacy ledger ("Deferred from: code review of spec-1-1-project-scaffolding-data-layer (2026-09-07)"), 2026-09-15
+location: src/store.py:get_user_with_hash
+reason: Internal-use-only function, properly scoped to callers within services.py. AD-6 wording was flagged as too broad for this design, but the function itself is not a violation.
+status: open
+
+### DW-9: Synchronous bcrypt blocks event loop
+origin: migrated from legacy ledger ("Deferred from: code review of spec-1-1-project-scaffolding-data-layer (2026-09-07)"), 2026-09-15
+location: src/services.py (bcrypt.hashpw/checkpw calls)
+reason: Acceptable for this demo app; all routes and services are synchronous by design, so the blocking call is consistent with the rest of the stack.
+status: open
+
+### DW-10: Missing `sub`-claim-absent unit test
+origin: migrated from legacy ledger ("Deferred from: code review of spec-1-1-project-scaffolding-data-layer (2026-09-07)"), 2026-09-15
+location: src/auth.py:32-33
+reason: Pre-existing test gap. The guard in auth.py:32-33 that rejects a token with no `sub` claim is correct, but no unit test exercises that path, so there is no regression risk currently, only missing coverage.
 status: open
