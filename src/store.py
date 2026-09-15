@@ -20,3 +20,10 @@ def get_user_with_hash(username: str) -> dict | None:
 
 def user_exists(username: str) -> bool:
     return username in users
+
+
+def update_password(username: str, new_hash: str) -> None:
+    user = users.get(username)
+    if user is None:
+        return
+    user["password_hash"] = new_hash

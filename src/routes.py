@@ -1,10 +1,22 @@
-"""HTTP endpoint handlers for /register, /login, /me."""
+"""HTTP endpoint handlers for /register, /login, /me, /change-password."""
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from auth import create_access_token, get_current_user
-from models import LoginRequest, RegisterRequest, TokenResponse, UserResponse
-from services import authenticate_user, get_current_user_profile, register_user
+from models import (
+    ChangePasswordRequest,
+    ChangePasswordResponse,
+    LoginRequest,
+    RegisterRequest,
+    TokenResponse,
+    UserResponse,
+)
+from services import (
+    authenticate_user,
+    change_password,
+    get_current_user_profile,
+    register_user,
+)
 
 router = APIRouter()
 
@@ -40,3 +52,14 @@ def me(username: str = Depends(get_current_user)):
         raise HTTPException(status_code=401, detail="User not found")
 
     return UserResponse(**profile)
+
+
+@router.post("/change-password", response_model=ChangePasswordResponse)
+def change_password_route(req: ChangePasswordRequest, username: str = Depends(get_current_user)):
+    try:
+        result = change_password(username, req.current_password, req.new_password)
+    except ValueError as e:
+        status = 401 if str(e) == "Invalid credentials" else 400
+        raise HTTPException(status_code=status, detail=str(e))
+
+    return ChangePasswordResponse(**result)

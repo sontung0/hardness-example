@@ -1,11 +1,10 @@
-"""Unit tests for store.update_password — TDD red phase scaffolds."""
+"""Unit tests for store.update_password."""
 
 import importlib
 import pytest
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.skip(reason="Red phase: update_password not implemented yet"),
 ]
 
 

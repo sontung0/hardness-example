@@ -43,7 +43,7 @@ development_status:
   epic-1-retrospective: done
 
   epic-2: backlog
-  2-1-change-password: backlog
+  2-1-change-password: done
   epic-2-retrospective: optional
 action_items:
   - id: "epic-1-retro-item-1-add-login_payload-factory-and-migrate-in"

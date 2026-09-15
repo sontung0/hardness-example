@@ -1,12 +1,9 @@
-"""Integration tests for POST /change-password — TDD red phase scaffolds."""
+"""Integration tests for POST /change-password."""
 
 import pytest
 
-# Red-phase: endpoint doesn't exist yet, but tests will be collected
-
 
 @pytest.mark.integration
-@pytest.mark.skip(reason="Red phase: /change-password endpoint not implemented yet")
 class TestChangePasswordEndpoint:
     """T-36 to T-49: API-level password change tests."""
 
@@ -22,6 +19,11 @@ class TestChangePasswordEndpoint:
         assert response.status_code == 200
         body = response.json()
         assert body["message"] == "Password changed successfully"
+
+        login_response = client.post(
+            "/login", json={"username": "testuser", "password": "newpass123"}
+        )
+        assert login_response.status_code == 200
 
     def test_old_password_no_longer_authenticates_after_change(self, client, registered_user, auth_header):
         """T-37: After successful change, old password fails login."""
@@ -50,6 +52,11 @@ class TestChangePasswordEndpoint:
         assert response.status_code == 400
         assert "detail" in response.json()
         assert "at least 8 characters" in response.json()["detail"]
+
+        login_response = client.post(
+            "/login", json={"username": "testuser", "password": "testpass123"}
+        )
+        assert login_response.status_code == 200
 
     def test_boundary_new_password_exactly_8_chars_returns_200(self, client, registered_user, auth_header):
         """T-39: New password exactly 8 chars → HTTP 200 (boundary)."""
@@ -108,6 +115,11 @@ class TestChangePasswordEndpoint:
         assert response.status_code == 401
         assert response.json()["detail"] == "Invalid credentials"
 
+        login_response = client.post(
+            "/login", json={"username": "testuser", "password": "testpass123"}
+        )
+        assert login_response.status_code == 200
+
     def test_existing_jwt_remains_valid_after_password_change(self, client, registered_user, auth_header):
         """T-44: JWT from before change still works for /me after change."""
         # Change password
@@ -120,6 +132,30 @@ class TestChangePasswordEndpoint:
         response = client.get("/me", headers=auth_header)
         assert response.status_code == 200
         assert response.json()["username"] == "testuser"
+
+    def test_user_deleted_before_request_returns_401_invalid_credentials(
+        self, client, delete_user_from_store
+    ):
+        """Token valid but user no longer in store → 401 Invalid credentials."""
+        reg = client.post(
+            "/register",
+            json={
+                "username": "ephemeral2",
+                "password": "pass12345",
+                "name": "Eph2",
+            },
+        )
+        token = reg.json()["access_token"]
+
+        delete_user_from_store("ephemeral2")
+
+        response = client.post(
+            "/change-password",
+            json={"current_password": "pass12345", "new_password": "newpass123"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 401
+        assert response.json()["detail"] == "Invalid credentials"
 
     # ── Error shape consistency ──────────────────────────────────────
 
@@ -144,15 +180,6 @@ class TestChangePasswordEndpoint:
         assert isinstance(response.json()["detail"], str)
 
     # ── Input validation ────────────────────────────────────────────
-
-    def test_username_case_normalization_in_change_password(self, client, registered_user, auth_header):
-        """T-46: Username is lowercased during change-password flow."""
-        response = client.post(
-            "/change-password",
-            json={"current_password": "testpass123", "new_password": "newpass123"},
-            headers=auth_header,
-        )
-        assert response.status_code == 200
 
     def test_empty_body_returns_400_or_422(self, client, registered_user, auth_header):
         """T-47: Empty JSON body → HTTP 400 or 422."""

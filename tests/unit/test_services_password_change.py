@@ -1,11 +1,10 @@
-"""Unit tests for services.change_password — TDD red phase scaffolds."""
+"""Unit tests for services.change_password."""
 
 import importlib
 import pytest
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.skip(reason="Red phase: change_password not implemented yet"),
 ]
 
 
@@ -39,3 +38,18 @@ class TestChangePassword:
         svc = importlib.import_module("services")
         with pytest.raises(ValueError):
             svc.change_password("nobody", "pass123", "newpass123")
+
+    def test_change_password_lowercases_username(self):
+        """T-46: Username is lowercased during change-password flow."""
+        svc = importlib.import_module("services")
+        svc.register_user("MixedCase", "current123", "Name")
+        result = svc.change_password("MixedCase", "current123", "newpass123")
+        assert result is not None
+        assert "message" in result
+
+    def test_change_password_wrong_current_with_short_new_raises_invalid_credentials(self):
+        """Wrong current password takes precedence over new-password length check."""
+        svc = importlib.import_module("services")
+        svc.register_user("dave", "current123", "Dave")
+        with pytest.raises(ValueError, match="Invalid credentials"):
+            svc.change_password("dave", "wrongpass", "short")

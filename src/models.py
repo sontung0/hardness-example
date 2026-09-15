@@ -24,3 +24,12 @@ class UserResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     detail: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class ChangePasswordResponse(BaseModel):
+    message: str
