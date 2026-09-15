@@ -11,6 +11,9 @@ def register_user(username: str, password: str, name: str) -> dict:
     if user_exists(username_lower):
         raise ValueError("Username already exists")
 
+    if len(password.encode("utf-8")) > 72:
+        raise ValueError("Password must be at most 72 bytes")
+
     password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
     add_user(username_lower, password_hash, name)
     return {"username": username_lower, "name": name}
@@ -21,6 +24,9 @@ def authenticate_user(username: str, password: str) -> dict:
     user = get_user_with_hash(username_lower)
     if user is None:
         raise ValueError("Invalid credentials")
+
+    if len(password.encode("utf-8")) > 72:
+        raise ValueError("Password must be at most 72 bytes")
 
     if not bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
         raise ValueError("Invalid credentials")
@@ -41,11 +47,17 @@ def change_password(username: str, current_password: str, new_password: str) -> 
     if user is None:
         raise ValueError("Invalid credentials")
 
+    if len(current_password.encode("utf-8")) > 72:
+        raise ValueError("Password must be at most 72 bytes")
+
     if not bcrypt.checkpw(current_password.encode("utf-8"), user["password_hash"].encode("utf-8")):
         raise ValueError("Invalid credentials")
 
     if len(new_password) < 8:
         raise ValueError("Password must be at least 8 characters")
+
+    if len(new_password.encode("utf-8")) > 72:
+        raise ValueError("Password must be at most 72 bytes")
 
     new_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
     update_password(username_lower, new_hash)

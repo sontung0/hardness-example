@@ -53,3 +53,37 @@ class TestChangePassword:
         svc.register_user("dave", "current123", "Dave")
         with pytest.raises(ValueError, match="Invalid credentials"):
             svc.change_password("dave", "wrongpass", "short")
+
+    def test_change_password_oversized_current_password_raises_value_error(self):
+        """Oversized current_password (>72 bytes) rejected before bcrypt.checkpw is called."""
+        svc = importlib.import_module("services")
+        svc.register_user("erin", "current123", "Erin")
+        with pytest.raises(ValueError, match="Password must be at most 72 bytes"):
+            svc.change_password("erin", "a" * 73, "newpass123")
+
+    def test_change_password_oversized_new_password_raises_value_error(self):
+        """Oversized new_password (>72 bytes) rejected after current-password check succeeds,
+        before bcrypt.hashpw is called; stored password remains unchanged."""
+        svc = importlib.import_module("services")
+        svc.register_user("frank", "current123", "Frank")
+        with pytest.raises(ValueError, match="Password must be at most 72 bytes"):
+            svc.change_password("frank", "current123", "a" * 73)
+        # Old password still works; new (oversized) one was never hashed/stored.
+        result = svc.authenticate_user("frank", "current123")
+        assert result["username"] == "frank"
+
+    def test_change_password_multibyte_utf8_new_password_over_72_bytes_raises_value_error(self):
+        """Multi-byte UTF-8 password over 72 bytes but <= 72 chars is rejected by byte length."""
+        svc = importlib.import_module("services")
+        svc.register_user("gina", "current123", "Gina")
+        new_password = "é" * 40  # 40 chars, 80 bytes when UTF-8 encoded
+        with pytest.raises(ValueError, match="Password must be at most 72 bytes"):
+            svc.change_password("gina", "current123", new_password)
+
+    def test_change_password_boundary_72_byte_passwords_succeed(self):
+        """Exactly 72 bytes for both current and new password proceeds normally."""
+        svc = importlib.import_module("services")
+        svc.register_user("harry", "a" * 72, "Harry")
+        result = svc.change_password("harry", "a" * 72, "b" * 72)
+        assert result is not None
+        assert "message" in result
