@@ -89,7 +89,13 @@ class TestDecodeToken:
     def test_tampered_signature_raises(self):
         """T-AUTH-10: Tampered signature byte raises InvalidTokenError."""
         token = create_access_token("fay")
-        tampered = token[:-1] + ("A" if token[-1] != "A" else "B")
+        # Flip a char in the middle of the signature. The last char is unsafe:
+        # its low 2 bits are base64 padding, so some flips change nothing.
+        header, payload, signature = token.split(".")
+        mid = len(signature) // 2
+        flipped = "A" if signature[mid] != "A" else "B"
+        signature = signature[:mid] + flipped + signature[mid + 1 :]
+        tampered = f"{header}.{payload}.{signature}"
         with pytest.raises(jwt.InvalidTokenError):
             decode_token(tampered)
 
