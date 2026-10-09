@@ -1,12 +1,100 @@
 # Deferred Work
 
-## Deferred from: code review (2026-09-06)
+### DW-1: bcrypt raises ValueError for any password over 72 bytes, and the generic ValueError→400 mapping in routes.py leaks that internal bcrypt message to the client instead of a clean error.
+origin: spec-deferred 1f31a4e6614a
+location: src/services.py (change_password, register_user, authenticate_user)
+source_spec: `spec-2-1-change-password.md`
+severity: medium
+reason: Confirmed empirically: bcrypt.hashpw/checkpw both raise "password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])" for a 100-byte password. Applies to both current_password (bcrypt.checkpw) and new_password (bcrypt.hashpw) in services.change_password, but the identical unguarded pattern already exists in register_user/authenticate_user since Epic 1 — pre-existing, cross-cutting, not introduced by this story.
+status: done 2026-09-15
+resolution: resolved by sweep bundle dw-bcrypt-length-guard
+resolution-undo: 7f96224741a927a58c2500a3c567e9fcdcaeb2844d242310b32a35b37a35a4fc 2026-09-15 7374617475733a206f70656e
 
-- **Epic 1 heading duplicated in epics.md** — Pre-existing planning doc issue. Summary block and detailed section both define "Epic 1: User Authentication API" without clear delineation.
-- **Test design references non-existent AD-6/7/8** — Pre-existing planning doc issue. Test design documents trace to architecture decisions that were never added to the spine, breaking traceability.
+### DW-2: change_password's read-verify-write sequence on the shared in-memory store dict is non-atomic under concurrent requests for the same username.
+origin: spec-deferred 92e885e07f15
+location: src/services.py:change_password, src/services.py:register_user
+source_spec: `spec-2-1-change-password.md`
+severity: medium
+reason: FastAPI runs sync route handlers in a threadpool, so two concurrent /change-password (or /register) calls for the same user can interleave between the check and the write. The identical non-atomic check-then-write pattern already exists in register_user (user_exists → add_user) — a pre-existing architectural characteristic of the module-level dict store, not introduced by this story.
+status: done 2026-09-15
+resolution: resolved by sweep bundle dw-atomic-password-store-writes
+resolution-undo: a71ec1804daaf3e8046b90f851145e7064d4c46d2967926a03ca47b870ff1c94 2026-09-15 7374617475733a206f70656e
 
-## Deferred from: code review of spec-1-1-project-scaffolding-data-layer (2026-09-07)
+### DW-3: DW-1 and DW-2 in deferred-work.md are filed under the unrelated 2026-09-07 spec-1-1 review heading instead of a new dated heading for this story's review, and use a different entry schema than the
+origin: spec-deferred b05e3012e9cb
+location: _bmad-output/implementation-artifacts/deferred-work.md
+source_spec: `spec-2-1-change-password.md`
+severity: low
+reason: Confirmed by reading deferred-work.md: DW-1/DW-2 (source_spec spec-2-1-change-password.md) sit directly under "## Deferred from: code review of spec-1-1-project-scaffolding-data-layer (2026-09-07)", and use a structured origin/location/source_spec/severity/reason/status schema while every other entry in the file is an unstructured bullet. deferred-work.md is orchestrator-owned per this run's instructions (never modify existing ledger entries), so build-auto cannot correct the misfiling or format itself.
+status: done 2026-09-15
+resolution: already resolved: deferred-work.md now uses a uniform '### DW-<n>:' schema throughout with no legacy '## Deferred from:' headings, per commit 397d7c6 (chore(sweep): migrate legacy deferred-work entries to DW format); DW-1/DW-2 sit consistently formatted alongside every other entry.
 
-- **`get_user_with_hash` leaks password_hash internally** — Internal-use-only function, properly scoped to services.py. AD-6 wording too broad for this design.
-- **Synchronous bcrypt blocks event loop** — Acceptable for demo app; all routes and services synchronous by design.
-- **Missing `sub`-claim-absent unit test** — Pre-existing test gap. Guard in auth.py:32-33 is correct; no regression risk.
+### DW-4: sprint-status.yaml still shows epic-2 as backlog and an unbumped last_updated even though 2-1-change-password (epic-2's only story) is done.
+origin: spec-deferred 187fd30f7b0a
+location: _bmad-output/implementation-artifacts/sprint-status.yaml
+source_spec: `spec-2-1-change-password.md`
+severity: low
+reason: Confirmed by reading sprint-status.yaml: development_status has epic-2: backlog alongside 2-1-change-password: done, and last_updated is still 09-11-2026 14:30. sprint-status.yaml is explicitly orchestrator-owned per this run's instructions (never write it), so build-auto cannot correct this itself.
+status: done 2026-09-15
+resolution: closed by human decision: Update sprint-status.yaml's epic-2 status to done to match its completed story and retrospective; a direct data edit outside code-bundle scope.
+decision: 2026-09-15 Flip epic-2 to done — Update sprint-status.yaml's epic-2 status to done to match its completed story and retrospective; a direct data edit outside code-bundle scope.
+
+### DW-5: tests/README.md documents only test_auth.py (T-01 to T-28) and still lists integration/ as a placeholder, undocumented for the T-29 to T-49 tests this story activated.
+origin: spec-deferred 91b58c4ad64e
+location: tests/README.md
+source_spec: `spec-2-1-change-password.md`
+severity: low
+reason: Confirmed by reading tests/README.md. The file is absent from this story's diff entirely (not in `git diff --stat` output), and it already omitted Epic 1's unit/test_store.py and unit/test_services.py before this story, so the staleness pre-dates this change and is not introduced by it.
+status: done 2026-09-15
+resolution: resolved by sweep bundle dw-document-new-test-files-in-readme
+resolution-undo: 9339eecb1e6cccd3b674a4d0509bf73d4fd5660ad8292bef262b883fd993c326 2026-09-15 7374617475733a206f70656e
+
+### DW-6: Epic 1 heading duplicated in epics.md
+origin: migrated from legacy ledger ("Deferred from: code review (2026-09-06)"), 2026-09-15
+location: _bmad-output/planning-artifacts/epics.md
+reason: Pre-existing planning doc issue. The summary block and the detailed section both define "Epic 1: User Authentication API" without clear delineation between the two.
+status: done 2026-09-15
+resolution: resolved by sweep bundle dw-fix-epics-duplicate-heading
+resolution-undo: 87f8d57e2abd898f8f469cf8444f463ee6bf3951d4ccc85feb4bb1c3baa1122b 2026-09-15 7374617475733a206f70656e
+
+### DW-7: Test design references non-existent AD-6/7/8
+origin: migrated from legacy ledger ("Deferred from: code review (2026-09-06)"), 2026-09-15
+location: _bmad-output/test-artifacts/test-design/test-design-architecture.md
+reason: Pre-existing planning doc issue. Test design documents trace to architecture decisions (AD-6/7/8) that were never added to the architecture spine, breaking traceability.
+status: done 2026-09-15
+resolution: already resolved: ARCHITECTURE-SPINE.md:114,120,126 now define AD-6, AD-7, and AD-8; test-design-architecture.md:188 is the only AD-6/7/8 reference in that file (no AD-7/AD-8 references exist there to be dangling) and it correctly resolves to the now-existing AD-6.
+
+### DW-8: `get_user_with_hash` leaks password_hash internally
+origin: migrated from legacy ledger ("Deferred from: code review of spec-1-1-project-scaffolding-data-layer (2026-09-07)"), 2026-09-15
+location: src/store.py:get_user_with_hash
+reason: Internal-use-only function, properly scoped to callers within services.py. AD-6 wording was flagged as too broad for this design, but the function itself is not a violation.
+status: open
+
+### DW-9: Synchronous bcrypt blocks event loop
+origin: migrated from legacy ledger ("Deferred from: code review of spec-1-1-project-scaffolding-data-layer (2026-09-07)"), 2026-09-15
+location: src/services.py (bcrypt.hashpw/checkpw calls)
+reason: Acceptable for this demo app; all routes and services are synchronous by design, so the blocking call is consistent with the rest of the stack.
+status: open
+
+### DW-10: Missing `sub`-claim-absent unit test
+origin: migrated from legacy ledger ("Deferred from: code review of spec-1-1-project-scaffolding-data-layer (2026-09-07)"), 2026-09-15
+location: src/auth.py:32-33
+reason: Pre-existing test gap. The guard in auth.py:32-33 that rejects a token with no `sub` claim is correct, but no unit test exercises that path, so there is no regression risk currently, only missing coverage.
+status: done 2026-09-15
+resolution: already resolved: tests/unit/test_auth.py:152-159 (test_missing_sub_claim_raises_401) exercises a valid JWT with no 'sub' claim and asserts the 401 'Invalid token' response from auth.py:38-40.
+
+### DW-11: The epic description sentence is duplicated verbatim between the Epic List table's Summary column and the detailed Epic section paragraph below it.
+origin: spec-deferred be510d4e161a
+location: _bmad-output/planning-artifacts/epics.md (Epic List table Summary column vs. Epic N section intro paragraph)
+source_spec: `spec-dw-6-fix-epics-duplicate-heading.md`
+severity: low
+reason: Pre-existing duplication, not introduced by this change: the same sentence appeared in both the old summary heading block and the detailed section before this diff, and still appears in both places (now the table cell and the detail paragraph) after it. DW-6 scoped only the duplicate *headings*, not duplicate *prose*, so fixing this is out of this story's scope; future edits to an epic's description risk drifting out of sync between the two locations.
+status: open
+
+### DW-12: tests/README.md's Architecture tree and Test IDs section still omit tests/unit/test_auth.py (unit tests for JWT creation/decoding/auth dependency) and tests/unit/test_structure.py (AR-1/AR-2/AR-5
+origin: spec-deferred 8daf9842b47b
+location: tests/README.md (Architecture tree, Test IDs section, and Best Practices → Markers bullet)
+source_spec: `spec-dw-5-document-new-test-files-in-readme.md`
+severity: low
+reason: Verified both files exist on disk and are absent from the README's Architecture tree and Test IDs section, both before and after this diff. DW-5's ledger entry and bundle intent name five specific files to add (the three T-29-T-49 files plus Epic 1's test_store.py and test_services.py); neither test_auth.py's unit-test twin nor test_structure.py is named, so this pre-existing gap is not within this story's named scope, though it is real under the bundle intent's broader "accurately reflects the current tests/ directory structure" phrasing. The `structural` marker (pyproject.toml line 33) predates this change and is likewise outside the Architecture tree/Test IDs scope this ledger entry names.
+status: open

@@ -67,6 +67,15 @@ class TestRegister:
         assert response.status_code == 400
         assert "detail" in response.json()
 
+    def test_register_oversized_password_returns_400(self, client):
+        """Password > 72 bytes → 400"""
+        response = client.post(
+            "/register",
+            json=registration_payload(username="alice", password="a" * 73, name="Alice"),
+        )
+        assert response.status_code == 400
+        assert "72 bytes" in response.json()["detail"]
+
     def test_register_duplicate_username_returns_409(self, client):
         """T-05: Duplicate username → 409"""
         client.post(
@@ -291,8 +300,14 @@ class TestGetCurrentUser:
             SECRET_KEY,
             algorithm="HS256",
         )
-        # Tamper: flip a character in the payload
-        tampered = token[:-1] + ("A" if token[-1] != "A" else "B")
+        # Tamper: swap in a different payload but keep the original signature.
+        # (Flipping the last signature char is flaky: its low 2 bits are
+        # base64 padding, so some flips decode to the same signature.)
+        header, _, signature = token.split(".")
+        forged_payload = jwt.utils.base64url_encode(
+            b'{"sub":"admin","exp":9999999999}'
+        ).decode()
+        tampered = f"{header}.{forged_payload}.{signature}"
         response = client.get(
             "/me", headers={"Authorization": f"Bearer {tampered}"}
         )

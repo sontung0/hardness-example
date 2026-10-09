@@ -1,6 +1,10 @@
 """In-memory user store. Module-level dict — data lost on restart by design (AD-3)."""
 
+import threading
+
 users: dict[str, dict] = {}
+# Non-reentrant: do not acquire recursively (e.g. don't call one locked services.py function from inside another's `with lock:` block).
+lock = threading.Lock()
 
 
 def add_user(username: str, password_hash: str, name: str) -> None:
@@ -20,3 +24,10 @@ def get_user_with_hash(username: str) -> dict | None:
 
 def user_exists(username: str) -> bool:
     return username in users
+
+
+def update_password(username: str, new_hash: str) -> None:
+    user = users.get(username)
+    if user is None:
+        return
+    user["password_hash"] = new_hash

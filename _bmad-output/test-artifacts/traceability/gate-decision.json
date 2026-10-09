@@ -1,20 +1,44 @@
 {
   "schema_version": "0.1.0",
-  "evaluated_at": "2026-09-08T00:00:00Z",
+  "evaluated_at": "2026-09-16T00:00:00Z",
   "repo": "bmad",
+  "branch": "feat/password-change-api",
+  "source_sha": "cecc4eb552385ecacb623b428469224b3be12fca",
   "target": {
-    "type": "epic",
-    "id": "epic-1",
-    "label": "Epic 1 — Auth API"
+    "type": "project",
+    "id": "bmad-full",
+    "label": "bmad — Full Project (Epic 1 + Epic 2)"
   },
   "collection_status": "COLLECTED",
   "gate_basis": "priority_thresholds",
   "gate_status": "PASS",
-  "rationale": "P0 coverage is 100% (8/8), P1 coverage is 100% (4/4), and overall coverage is 93.3% (14/15). All functional, non-functional, and architectural requirements have automated test coverage. 82 tests pass across 5 test files. All 4 originally identified gaps resolved. Two acknowledged non-blocking gaps remain: AR-3 (tech stack version pinning, verified by pyproject.toml) and performance/load testing (not in scope).",
+  "rationale": "P0 coverage is 100% (18/18), P1 coverage is 100% (10/10), and overall coverage is 97% (32/33). All 7 functional requirements, 9 non-functional requirements, 6 automated architectural requirements, and 8 risk-driven scenarios have automated test coverage. 125 tests pass across 12 test files with 0 failures. The single uncovered item (AR-3: tech stack version pinning) is a P2 structural check verified manually via pyproject.toml and poses no runtime risk. No live-only requirements exist. Coverage spans API, Unit, and Structural levels with strong defense-in-depth on critical security paths.",
   "p0_status": "MET",
   "p1_status": "MET",
   "overall_status": "MET",
   "critical_open": 0,
+  "coverage_statistics": {
+    "overall_coverage_percentage": 97,
+    "total_requirements": 33,
+    "fully_covered": 32,
+    "priority_breakdown": {
+      "P0": { "total": 18, "covered": 18, "percentage": 100 },
+      "P1": { "total": 10, "covered": 10, "percentage": 100 },
+      "P2": { "total": 5, "covered": 4, "percentage": 80 },
+      "P3": { "total": 0, "covered": 0, "percentage": 100 }
+    }
+  },
+  "test_statistics": {
+    "total": 125,
+    "passing": 125,
+    "failing": 0,
+    "by_level": {
+      "api": 50,
+      "unit": 59,
+      "structural": 16,
+      "live": 0
+    }
+  },
   "links": {
     "trace_report_path": "_bmad-output/test-artifacts/traceability/traceability-matrix.md",
     "trace_report_url": ""

@@ -33,6 +33,9 @@ config.user.toml
 *.swo
 *~
 
+# Claude Code local overrides
+.claude/settings.local.json
+
 # OS
 .DS_Store
 Thumbs.db

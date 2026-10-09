@@ -34,10 +34,13 @@ tests/
 ├── conftest.py                    # Core fixtures (client, auth_header, _clear_store)
 ├── test_auth.py                   # API acceptance tests (T-01 to T-28)
 ├── unit/
-│   ├── test_store.py              # Unit tests for in-memory store
-│   └── test_services.py           # Unit tests for business logic
-├── integration/                   # Integration tests (placeholder)
-├── api/                           # Additional API tests (placeholder)
+│   ├── test_store.py                    # Unit tests for in-memory store
+│   ├── test_services.py                 # Unit tests for business logic
+│   ├── test_store_password_change.py    # Unit tests for password update in store (T-29 to T-31)
+│   └── test_services_password_change.py # Unit tests for password change service logic (T-32 to T-35, T-46)
+├── integration/
+│   └── test_password_change.py          # API-level password change tests (T-36 to T-45, T-47 to T-49)
+├── api/                                 # Additional API tests (placeholder)
 ├── support/
 │   ├── fixtures/
 │   │   └── api_fixtures.py        # API-level fixtures (payloads)
@@ -88,3 +91,8 @@ Test IDs in `test_auth.py` map to the coverage matrix in `test-design-qa.md`:
 - T-14 to T-19: FR-3 — Get current user
 - T-20 to T-25: NFR scenarios
 - T-26 to T-28: Risk-driven scenarios
+
+Test IDs in `test_store_password_change.py`, `test_services_password_change.py`, and `integration/test_password_change.py` map to the coverage matrix in `test-design-epic-2.md`:
+- T-29 to T-31: `test_store_password_change.py` — Store-level password update operations
+- T-32 to T-35, T-46: `test_services_password_change.py` — Service-level password change logic
+- T-36 to T-45, T-47 to T-49: `integration/test_password_change.py` — API-level password change tests
