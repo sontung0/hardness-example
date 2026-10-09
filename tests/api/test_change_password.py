@@ -18,12 +18,10 @@ import pytest
 
 from tests.support.constants import (
     ERR_NOT_AUTHENTICATED,
-    TEST_NAME,
     TEST_PASSWORD,
     TEST_USERNAME,
 )
 from tests.support.helpers.factories import registration_payload
-
 
 # ---------------------------------------------------------------------------
 # FR-4 / FR-5 / FR-6 / FR-7: Change Password

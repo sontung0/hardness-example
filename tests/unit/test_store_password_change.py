@@ -1,6 +1,7 @@
 """Unit tests for store.update_password."""
 
 import importlib
+
 import pytest
 
 pytestmark = [
